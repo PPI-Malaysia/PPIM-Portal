@@ -1,5 +1,7 @@
 # PPIM Portal
 
+![PPIM Logo](https://ppimalaysia.or.id/wp-content/uploads/2023/10/Logo-PPIM-1.png)
+
 PPIM Portal is a comprehensive web-based tool designed for PPIM members to access various functionalities related to PPIM activities.
 
 ## Features
