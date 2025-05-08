@@ -84,7 +84,9 @@ Current progress:
 
 ## Contributors
 
--   [gitrhs](https://github.com/gitrhs) - Project Leader
+-   Project Lead:
+    -   [Rafi Daffa Ramadhani](https://github.com/gitrhs)
+    -   [Carren Lowira](https://github.com/cardenr1der)
 
 ## License
 
