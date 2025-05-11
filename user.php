@@ -621,7 +621,7 @@ if ($result->num_rows > 0) {
                                             <?php
                                             foreach ($users as $user){
                                                 if ($user['type'] == 6){
-                                                    $edit = "you can't edit yourself";
+                                                    $edit = "-";
                                                     $useracctype = "Super Admin";
                                                 } else {
                                                     $edit = '<a href="#" class="link-secondary d-none d-md-block">Edit</a>';
