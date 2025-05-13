@@ -214,8 +214,8 @@ $credit_footer = '
     <!-- Fullcalendar js -->
     <script src="assets/vendor/fullcalendar/index.global.min.js"></script>
 
-    <!-- Calendar App Demo js -->
-    <script src="assets/js/pages/apps-calendar.js"></script>
+    <!-- Calendar js -->
+    <script src="assets/js/pages/calendar.js"></script>
 
 </body>
 

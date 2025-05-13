@@ -366,8 +366,6 @@ $credit_footer = '
     <!-- Apex Chart js -->
     <script src="assets/vendor/apexcharts/apexcharts.min.js"></script>
 
-    <!-- Projects Analytics Dashboard App js -->
-    <script src="assets/js/pages/dashboard-sales.js"></script>
 
 </body>
 
