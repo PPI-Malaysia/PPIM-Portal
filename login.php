@@ -49,7 +49,7 @@ if (isset($_SESSION['user_id'])) {
                         Portal.
                     </p>
 
-                    <form action="assets/php/login.php" class="text-start mb-3" method="POST">
+                    <form action="assets/php/page/login.php" class="text-start mb-3" method="POST">
                         <div class="mb-3">
                             <label class="form-label" for="username">Username</label>
                             <input type="text" id="username" name="username" class="form-control"

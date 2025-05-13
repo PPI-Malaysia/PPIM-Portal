@@ -1,10 +1,13 @@
 <?php
-require_once 'conf.php';
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+require_once '../conf.php';
 $error = '';
-
 // Check if already logged in
 if (isset($_SESSION['user_id'])) {
-    header('Location: ../../login.php');
+    echo "You are already logged in. Redirecting...";
+    header('Location: ../../../index.php');
     exit();
 }
 
@@ -25,15 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $result->fetch_assoc();
             // Verify password with salt
             $hashedPassword = hash('sha256', $password . $user['salt']);
-            
             if ($hashedPassword === $user['password']) {
-                // Password is correct, create session
+                //Password is correct, create session
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_type'] = $user['type'];
                 
                 // Redirect based on user type
-                header('Location: ../../index.php');
+                echo "Hello ".$user['name'].$user['type']."! Login successful. Redirecting...";
+                header('Location: ../../../index.php');
                 exit();
             } else {
                 $error = 'Invalid username or password';
@@ -44,6 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt->close();
     }
+    
+    // Only redirect to login page if there's an error
+    if (!empty($error)) {
+        echo $error;
+        header("Location:../../../login.php?error=$error");
+        exit();
+    }
 }
-header("Location:../../login.php?error=$error")
 ?>
