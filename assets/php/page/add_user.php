@@ -1,6 +1,6 @@
 <?php
 //note: this page is only accessible to users with user_type = 6 (super admin)
-require_once("conf.php");
+require_once("../conf.php");
 
 // Set the content type to JSON
 header('Content-Type: application/json');
