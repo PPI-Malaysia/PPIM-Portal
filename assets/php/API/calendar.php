@@ -3,9 +3,6 @@
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
 // Use proper path resolution for including files
 // This is necessary because this file is in a subdirectory (assets/php/API)
