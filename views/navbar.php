@@ -33,7 +33,6 @@
                 <a href="index.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-dashboard"></i></span>
                     <span class="menu-text"> Dashboard </span>
-                    <span class="badge bg-success rounded-pill">5</span>
                 </a>
             </li>
 
@@ -45,6 +44,9 @@
                     <span class="menu-text"> Calendar </span>
                 </a>
             </li>
+
+            <li class="side-nav-title mt-2">Admin Setting</li>
+
             <?php if ($main->isUserType(6)){ ?>
             <li class="side-nav-item">
                 <a href="user.php" class="side-nav-link">
@@ -309,20 +311,20 @@
                             <div class="row g-0">
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/slack.svg" alt="slack">
-                                        <span>Slack</span>
+                                        <img src="assets/images/brands/instagram.svg" alt="instagram">
+                                        <span>Instagram</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/gitlab.svg" alt="Github">
-                                        <span>Gitlab</span>
+                                        <img src="assets/images/brands/linkedin.svg" alt="linkedin">
+                                        <span>LinkedIn</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/dribbble.svg" alt="dribbble">
-                                        <span>Dribbble</span>
+                                        <img src="assets/images/brands/twitter.svg" alt="x">
+                                        <span>X</span>
                                     </a>
                                 </div>
                             </div>
@@ -330,41 +332,20 @@
                             <div class="row g-0">
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/bitbucket.svg" alt="bitbucket">
-                                        <span>Bitbucket</span>
+                                        <img src="assets/images/brands/facebook.svg" alt="facebook">
+                                        <span>Facebook</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/dropbox.svg" alt="dropbox">
-                                        <span>Dropbox</span>
+                                        <img src="assets/images/brands/facebook.svg" alt="youtube">
+                                        <span>Youtube</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/google-cloud.svg" alt="G Suite">
-                                        <span>G Cloud</span>
-                                    </a>
-                                </div>
-                            </div> <!-- end row-->
-
-                            <div class="row g-0">
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/aws.svg" alt="bitbucket">
-                                        <span>AWS</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/digital-ocean.svg" alt="dropbox">
-                                        <span>Server</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/bootstrap.svg" alt="G Suite">
-                                        <span>Bootstrap</span>
+                                        <img src="assets/images/browsers/web.svg" alt="website">
+                                        <span>Website</span>
                                     </a>
                                 </div>
                             </div> <!-- end row-->
@@ -408,7 +389,7 @@
                         </div>
 
                         <!-- item-->
-                        <a href="javascript:void(0);" class="dropdown-item">
+                        <a href="account.php" class="dropdown-item">
                             <i class="ti ti-user-hexagon me-1 fs-17 align-middle"></i>
                             <span class="align-middle">My Account</span>
                         </a>
