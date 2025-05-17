@@ -41,7 +41,8 @@ class ppim {
             $this->isLoggedIn = true;
             return true;
         } else {
-            header('Location: ' . (defined('ROOT_PATH') ? ROOT_PATH : '') . 'login.php');
+            // Use a relative path or absolute URL instead of filesystem path
+            header('Location: /login.php');
             exit();
         }
     }
