@@ -37,6 +37,9 @@ $credit_footer = '
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.min.css"
         integrity="sha512-UiKdzM5DL+I+2YFxK+7TDedVyVm7HMp/bN85NeWMJNYortoll+Nd6PU9ZDrZiaOsdarOyk9egQm6LOJZi36L2g=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Page css -->
+    <link href="assets/css/page/calendar.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>

@@ -1,0 +1,53 @@
+/* Target every possible time selector button */
+[class*="timepicker"] button,
+[class*="datetimepicker"] button,
+[class*="datepicker"] button,
+[class*="picker"] .btn-primary,
+[class*="timepicker"] .btn,
+.hour-select .btn,
+.minute-select .btn,
+.ampm-select .btn,
+.time-select .btn,
+div[class*="time"] button,
+.timepicker-hour,
+.timepicker-minute,
+.timepicker-second,
+td.active,
+td.active:hover,
+span.active,
+tr td.active,
+td.day.active,
+td[data-action="selectHour"],
+td[data-action="selectMinute"],
+span[data-action="selectHour"],
+span[data-action="selectMinute"],
+button[data-action="togglePeriod"] {
+    background-color: #333333 !important;
+    background-image: none !important;
+    border-color: #222222 !important;
+    color: white !important;
+    box-shadow: none !important;
+}
+
+/* Selected date in calendar */
+.datepicker td.active,
+.datepicker td.active:hover,
+.datepicker td.selected,
+.datepicker td.today.active,
+[class*="datepicker"] td.active,
+[class*="datetimepicker"] td.active {
+    background-color: #333333 !important;
+    background-image: none !important;
+}
+
+/* Blue highlighted day */
+td.day.selected,
+td.day.active,
+td.selected,
+td.active,
+[class*="selected"],
+.day.active,
+.active.day,
+[class*="datepicker"] .active {
+    background-color: #333333 !important;
+}
