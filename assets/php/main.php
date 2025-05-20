@@ -17,9 +17,14 @@ class ppim {
             session_start();
         }
         
-        // Connect to database
-        require_once("assets/php/conf.php");
+        // Connect to database - using absolute path resolution
+        if (!defined('ROOT_PATH')) {
+            define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+        }
+        
+        require_once(ROOT_PATH . "assets/php/conf.php");
         $this->conn = $conn; // Store connection as property
+        
         //check if user already logged in
         $this->checkLogin();
     }
@@ -36,7 +41,8 @@ class ppim {
             $this->isLoggedIn = true;
             return true;
         } else {
-            header('Location: login.php');
+            // Use a relative path or absolute URL instead of filesystem path
+            header('Location: /login.php');
             exit();
         }
     }
@@ -87,7 +93,7 @@ class ppim {
      */
     public function renderNavbar() {
         $main = $this;
-        include('views/navbar.php');
+        include(ROOT_PATH . 'views/navbar.php');
     }
     
     /**
@@ -95,7 +101,7 @@ class ppim {
      */
     public function renderTheme() {
         $main = $this;
-        include('views/theme.php');
+        include(ROOT_PATH . 'views/theme.php');
     }
 }
 ?>

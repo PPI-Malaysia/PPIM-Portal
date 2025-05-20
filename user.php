@@ -141,7 +141,8 @@ $credit_footer = '
                                     <br>
                                     Super Admin can access <code>All Content</code>
                                 </p>
-                                <p class="d-block d-md-none">Note: Please use bigger device to edit device!</p>
+                                <p class="d-block d-md-none">Note: Please use bigger device to edit user information!
+                                </p>
                                 <div class="table-responsive-sm">
                                     <table class="table mb-0">
                                         <thead>

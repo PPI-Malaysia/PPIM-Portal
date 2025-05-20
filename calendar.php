@@ -2,7 +2,7 @@
 // load main functions
 require_once("assets/php/main.php");
 $main = new ppim();
-
+date_default_timezone_set('Asia/Kuala_Lumpur');
 // Credit: fill your name as the person who created this page here
 $credit = "Rafi Daffa Ramadhani";
 $credit_footer = '
@@ -32,12 +32,19 @@ $credit_footer = '
 
     <!-- Icons css -->
     <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Toast notification css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.min.css"
+        integrity="sha512-UiKdzM5DL+I+2YFxK+7TDedVyVm7HMp/bN85NeWMJNYortoll+Nd6PU9ZDrZiaOsdarOyk9egQm6LOJZi36L2g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Page css -->
+    <link href="assets/css/page/calendar.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
     <!-- Begin page -->
     <div class="wrapper">
-
 
         <?php $main->renderNavbar(); ?>
 
@@ -71,27 +78,33 @@ $credit_footer = '
                                     <div id="external-events" class="mt-2">
                                         <p class="text-muted">Drag and drop your event or click in the calendar</p>
                                         <div class="external-event fc-event bg-success-subtle text-success"
-                                            data-class="bg-success-subtle">
+                                            data-class="bg-success-subtle text-success">
                                             <i class="ti ti-circle-filled me-2"></i>Online/Offline Event
                                         </div>
                                         <div class="external-event fc-event bg-info-subtle text-info"
-                                            data-class="bg-info-subtle">
+                                            data-class="bg-info-subtle text-info">
                                             <i class="ti ti-circle-filled me-2"></i>Meeting
                                         </div>
                                         <div class="external-event fc-event bg-warning-subtle text-warning"
-                                            data-class="bg-warning-subtle">
+                                            data-class="bg-warning-subtle text-warning">
                                             <i class="ti ti-circle-filled me-2"></i>Deadline
                                         </div>
                                         <div class="external-event fc-event bg-danger-subtle text-danger"
-                                            data-class="bg-danger-subtle">
+                                            data-class="bg-danger-subtle text-danger">
                                             <i class="ti ti-circle-filled me-2"></i>Important
                                         </div>
                                         <div class="external-event fc-event bg-dark-subtle text-dark"
-                                            data-class="bg-dark-subtle">
+                                            data-class="bg-dark-subtle text-dark">
                                             <i class="ti ti-circle-filled me-2"></i>Other
                                         </div>
                                     </div>
 
+                                    <div class="mt-4">
+                                        <div class="alert alert-info">
+                                            <i class="ti ti-info-circle me-2"></i>
+                                            You can view all events, but can only edit and delete your own events.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div> <!-- end col-->
@@ -99,6 +112,10 @@ $credit_footer = '
                         <div class="col-xl-9">
                             <div class="card">
                                 <div class="card-body">
+                                    <!-- Pass current user ID and name to JavaScript -->
+                                    <input type="hidden" id="current-user-id" value="<?php echo $main->getUserId(); ?>">
+                                    <input type="hidden" id="current-user-name"
+                                        value="<?php echo $main->getUserName(); ?>">
                                     <div id="calendar"></div>
                                 </div>
                             </div>
@@ -124,6 +141,10 @@ $credit_footer = '
                                 <div class="modal-body">
                                     <div class="row">
                                         <div class="col-12">
+                                            <!-- Creator info for viewing other's events -->
+                                            <div id="event-creator" class="alert alert-info mb-2" style="display:none;">
+                                            </div>
+
                                             <div class="mb-2">
                                                 <label class="control-label form-label" for="event-title">Event
                                                     Name</label>
@@ -146,6 +167,28 @@ $credit_footer = '
                                                     <option value="bg-dark-subtle text-dark">Other</option>
                                                 </select>
                                                 <div class="invalid-feedback">Please select a valid event category</div>
+                                            </div>
+                                        </div>
+                                        <!-- Start date and time -->
+                                        <div class="col-12">
+                                            <div class="mb-2">
+                                                <label class="control-label form-label" for="event-start-date">Start
+                                                    Date/Time</label>
+                                                <input type="datetime-local" class="form-control" id="event-start-date"
+                                                    name="start-date" required>
+                                                <div class="invalid-feedback">Please provide a valid start date/time
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- End date and time -->
+                                        <div class="col-12">
+                                            <div class="mb-2">
+                                                <label class="control-label form-label" for="event-end-date">End
+                                                    Date/Time</label>
+                                                <input type="datetime-local" class="form-control" id="event-end-date"
+                                                    name="end-date" required>
+                                                <div class="invalid-feedback">Please provide a valid end date/time</div>
                                             </div>
                                         </div>
                                     </div>
@@ -213,6 +256,12 @@ $credit_footer = '
 
     <!-- Fullcalendar js -->
     <script src="assets/vendor/fullcalendar/index.global.min.js"></script>
+    <script src="assets/vendor/fullcalendar/index.js"></script>
+
+    <!-- Toast notification js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
+        integrity="sha512-MnKz2SbnWiXJ/e0lSfSzjaz9JjJXQNb2iykcZkEY2WOzgJIWVqJBFIIPidlCjak0iTH2bt2u1fHQ4pvKvBYy6Q=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- Calendar js -->
     <script src="assets/js/pages/calendar.js"></script>
