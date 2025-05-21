@@ -45,15 +45,22 @@
                 </a>
             </li>
 
-            <li class="side-nav-title mt-2">Admin Setting</li>
-
-            <?php if ($main->isUserType(6)){ ?>
             <li class="side-nav-item">
-                <a href="user.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-user-filled"></i></span>
-                    <span class="menu-text"> User </span>
+                <a href="ticket.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-ticket"></i></span>
+                    <span class="menu-text"> Ticket Management </span>
                 </a>
             </li>
+
+            <li class="side-nav-title mt-2">Admin Setting</li>
+
+            <?php if ($main->isUserType(6)) { ?>
+                <li class="side-nav-item">
+                    <a href="user.php" class="side-nav-link">
+                        <span class="menu-icon"><i class="ti ti-user-filled"></i></span>
+                        <span class="menu-text"> User </span>
+                    </a>
+                </li>
             <?php } ?>
 
 
