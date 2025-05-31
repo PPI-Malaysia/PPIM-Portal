@@ -45,6 +45,13 @@
                 </a>
             </li>
 
+            <li class="side-nav-item">
+                <a href="calendar.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-calendar-filled"></i></span>
+                    <span class="menu-text"> Menfess </span>
+                </a>
+            </li>
+
             <li class="side-nav-title mt-2">Admin Setting</li>
 
             <?php if ($main->isUserType(6)){ ?>
