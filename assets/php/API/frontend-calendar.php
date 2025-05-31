@@ -39,15 +39,33 @@ try {
         $events[] = $row;
     }
 
+    // Get active events (currently happening)
+    $activeEventsQuery = "SELECT id, user_id, title, start, end, class_name, created_at, updated_at 
+                         FROM calendar_events 
+                         WHERE start <= NOW() AND end >= NOW() 
+                         ORDER BY start ASC";
+    $activeEventsResult = $conn->query($activeEventsQuery);
+    
+    if (!$activeEventsResult) {
+        throw new Exception("Error fetching active events: " . $conn->error);
+    }
+    
+    $activeEvents = [];
+    while ($row = $activeEventsResult->fetch_assoc()) {
+        $activeEvents[] = $row;
+    }
+
     // Create response
     $response = [
         'success' => true,
         'data' => [
             'event_dates' => $eventDates,
             'events' => $events,
+            'active_events' => $activeEvents,
             'summary' => [
                 'total_events' => count($events),
-                'total_event_dates' => count($eventDates)
+                'total_event_dates' => count($eventDates),
+                'total_active_events' => count($activeEvents)
             ]
         ]
     ];
