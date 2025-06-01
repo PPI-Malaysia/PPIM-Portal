@@ -27,7 +27,7 @@ try {
     }
 
     // Get all events with full details
-    $eventsQuery = "SELECT id, user_id, title, start, end, class_name, created_at, updated_at FROM calendar_events ORDER BY start ASC";
+    $eventsQuery = "SELECT calendar_events.id, user.name, title, start, end, class_name, created_at, updated_at FROM calendar_events JOIN user ON calendar_events.user_id = user.id ORDER BY start ASC";
     $eventsResult = $conn->query($eventsQuery);
     
     if (!$eventsResult) {
@@ -40,8 +40,9 @@ try {
     }
 
     // Get active events (currently happening)
-    $activeEventsQuery = "SELECT id, user_id, title, start, end, class_name, created_at, updated_at 
+    $activeEventsQuery = "SELECT calendar_events.id, calendar_events.user_id, user.name, title, start, end, class_name, created_at, updated_at 
                          FROM calendar_events 
+                         JOIN user ON calendar_events.user_id = user.id
                          WHERE start <= NOW() AND end >= NOW() 
                          ORDER BY start ASC";
     $activeEventsResult = $conn->query($activeEventsQuery);
