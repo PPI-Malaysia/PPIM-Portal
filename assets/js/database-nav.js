@@ -1,94 +1,102 @@
-// Navigation and Section Management
-document.addEventListener('DOMContentLoaded', function() {
-    // Get all navigation links and sections
+document.addEventListener('DOMContentLoaded', function () {
     const navLinks = document.querySelectorAll('.table-navigation a');
     const sections = document.querySelectorAll('.table-section');
-    
-    // Function to show a specific section
+
+    // Show section by ID
     function showSection(targetId) {
-        // Hide all sections
-        sections.forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Remove active class from all nav links
-        navLinks.forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        // Show target section
+        sections.forEach(section => section.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
+
         const targetSection = document.getElementById(targetId);
-        if (targetSection) {
-            targetSection.classList.add('active');
-        }
-        
-        // Add active class to clicked nav link
+        if (targetSection) targetSection.classList.add('active');
+
         const activeLink = document.querySelector(`a[href="#${targetId}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
-        }
+        if (activeLink) activeLink.classList.add('active');
     }
-    
-    // Add click event listeners to navigation links
+
+    // Handle nav link click
     navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+        link.addEventListener('click', function (e) {
             e.preventDefault();
             const targetId = this.getAttribute('href').substring(1);
             showSection(targetId);
-            
-            // Update URL hash without jumping
+
             history.pushState(null, null, `#${targetId}`);
+            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
-    
-    // Check URL hash on page load
+
+    // Check hash on load or change
     function checkHash() {
         const hash = window.location.hash.substring(1);
         if (hash && document.getElementById(hash)) {
             showSection(hash);
         } else {
-            // Show first section by default
-            showSection('university_type');
+            showSection('university_type'); // default section
         }
     }
-    
-    // Handle browser back/forward buttons
+
     window.addEventListener('hashchange', checkHash);
-    
-    // Initial load
-    checkHash();
-    
-    // Form submission feedback
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        form.addEventListener('submit', function() {
+    checkHash(); // on load
+
+    // Form submit button feedback
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function () {
             const button = this.querySelector('button[type="submit"]');
             if (button) {
+                const originalText = button.textContent;
                 button.disabled = true;
                 button.textContent = 'Processing...';
-                
-                // Re-enable after 3 seconds (fallback)
                 setTimeout(() => {
                     button.disabled = false;
-                    button.textContent = button.textContent.replace('Processing...', 
-                        button.textContent.includes('Update') ? 'Update' : 
-                        button.textContent.includes('Delete') ? 'Delete' : 'Add');
+                    button.textContent = originalText;
                 }, 3000);
             }
         });
+
+        // Form delete confirmation
+        const isDeleteForm = form.querySelector('input[name="action"][value="delete"]');
+        if (isDeleteForm) {
+            form.addEventListener('submit', function (e) {
+                const confirmed = confirm('Are you sure you want to delete this record? This action cannot be undone.');
+                if (!confirmed) e.preventDefault();
+            });
+        }
     });
-    
-    // Confirm delete with better styling
-    const deleteButtons = document.querySelectorAll('button[onclick*="confirm"]');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
+
+    // Email field validation
+    document.querySelectorAll('input[type="email"]').forEach(input => {
+        input.addEventListener('blur', function () {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            this.setCustomValidity(this.value && !emailRegex.test(this.value) ? 'Please enter a valid email address' : '');
+        });
+    });
+
+    // Phone field validation
+    document.querySelectorAll('input[type="tel"]').forEach(input => {
+        input.addEventListener('blur', function () {
+            const phoneRegex = /^[\+]?[0-9\s\-\(\)]{7,15}$/;
+            this.setCustomValidity(this.value && !phoneRegex.test(this.value) ? 'Please enter a valid phone number' : '');
+        });
+    });
+
+    // Enhanced delete buttons with confirmation (and remove inline onclick)
+    document.querySelectorAll('button[onclick*="confirm"]').forEach(button => {
+        button.removeAttribute('onclick');
+        button.addEventListener('click', function (e) {
             e.preventDefault();
-            const confirmed = confirm('Are you sure you want to delete this record? This action cannot be undone.');
-            if (confirmed) {
-                this.closest('form').submit();
+            if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+                this.closest('form')?.submit();
             }
         });
-        // Remove the inline onclick
-        button.removeAttribute('onclick');
     });
+
+    // Auto-hide alerts
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.transition = 'opacity 0.3s';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }, 5000);
 });
