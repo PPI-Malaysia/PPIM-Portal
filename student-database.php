@@ -9,8 +9,7 @@ $credit_footer = '
 <a href="https://github.com/Zentoboo" target="_blank">Christopher Bertrand</a>
 ';
 
-// Database connection
-// Database configuration
+// Database configuration & connection
 $host = 'localhost';
 $port = 3306;
 $dbname = 'ppimjtxz_ppimalaysia';
@@ -392,7 +391,7 @@ function getDropdownOptions($pdo, $table, $valueField, $textField, $allowedTable
                                 <h4 class="header-title">Database Tables Navigation</h4>
                             </div>
                             <div class="card-body">
-                                <div class="d-flex flex-wrap gap-2">
+                                <div class="table-navigation d-flex flex-wrap gap-2">
                                     <a href="#university_type" class="btn btn-outline-primary btn-sm">University Types</a>
                                     <a href="#qualification_level" class="btn btn-outline-primary btn-sm">Qualification Levels</a>
                                     <a href="#postcode" class="btn btn-outline-primary btn-sm">Postcodes</a>
@@ -407,7 +406,7 @@ function getDropdownOptions($pdo, $table, $valueField, $textField, $allowedTable
                 </div>
 
                 <!-- University Types Section -->
-                <div id="university_type" class="row">
+                <div id="university_type" class="row table-section">
                     <div class="col">
                         <div class="card mb-4">
                             <div class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
@@ -515,7 +514,7 @@ function getDropdownOptions($pdo, $table, $valueField, $textField, $allowedTable
                 </div>
 
                 <!-- Qualification Levels Section -->
-                <div id="qualification_level" class="row">
+                <div id="qualification_level" class="row table-section">
                     <div class="col">
                         <div class="card mb-4">
                             <div class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
@@ -633,7 +632,7 @@ function getDropdownOptions($pdo, $table, $valueField, $textField, $allowedTable
                 </div>
 
                 <!-- Postcodes CRUD -->
-                <div id="postcode" class="row">
+                <div id="postcode" class="row table-section">
                     <div class="col">
                         <div class="card mb-4">
                             <div class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
@@ -745,7 +744,7 @@ function getDropdownOptions($pdo, $table, $valueField, $textField, $allowedTable
                 </div>
 
                 <!-- Universities CRUD -->
-                <div id="university" class="row">
+                <div id="university" class="row table-section">
                     <div class="col">
                         <div class="card mb-4">
                             <div class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
