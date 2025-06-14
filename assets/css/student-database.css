@@ -1,0 +1,6 @@
+.table-section {
+    display: none;
+}
+.table-section.active {
+    display: block;
+}

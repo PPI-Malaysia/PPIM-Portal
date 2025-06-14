@@ -62,6 +62,15 @@
                 </a>
             </li>
             <?php } ?>
+            <!-- in progress -->
+            <?php if ($main->isUserType(6)){ ?>
+            <li class="side-nav-item">
+                <a href="student-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> Database </span>
+                </a>
+            </li>
+            <?php } ?>
 
 
 
