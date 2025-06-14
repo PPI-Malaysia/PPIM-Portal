@@ -44,14 +44,14 @@
                     <span class="menu-text"> Calendar </span>
                 </a>
             </li>
-
+            <!--
             <li class="side-nav-item">
                 <a href="calendar.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-calendar-filled"></i></span>
                     <span class="menu-text"> Menfess </span>
                 </a>
             </li>
-
+-->
             <li class="side-nav-title mt-2">Admin Setting</li>
 
             <?php if ($main->isUserType(6)){ ?>
@@ -67,7 +67,7 @@
             <li class="side-nav-item">
                 <a href="student-database.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> Database </span>
+                    <span class="menu-text"> Pendataan Mahasiswa </span>
                 </a>
             </li>
             <?php } ?>
