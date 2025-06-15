@@ -3,7 +3,7 @@
 /**
  * Student Database Management Class
  * Only accessible to user_type >= 5 and < 100
- * COMPLETE VERSION with all CRUD operations
+ * COMPLETE VERSION with all CRUD operations - CLEANED
  */
 
 require_once("assets/php/main.php");
@@ -84,7 +84,6 @@ class DatabaseLogger
     /**
      * Get logs with optional filters
      */
-
     private function getLogsFromLargeFile($limit, $filters = [])
     {
         // Simple implementation for large files
@@ -253,7 +252,6 @@ class StudentDatabase extends ppim
 
     private $logger;
 
-
     /**
      * Constructor - Initialize with access control
      */
@@ -266,16 +264,23 @@ class StudentDatabase extends ppim
                 throw new Exception("Database connection not established");
             }
 
-            // Initialize logger - THIS IS NEW
+            // Initialize logger
             $this->logger = new DatabaseLogger($this->getUserId(), $this->getUserName());
 
             if (!$this->hasAccess()) {
-                // Log unauthorized access attempt - THIS IS NEW
+                // Log unauthorized access attempt
                 $this->logger->log('warning', 'system', 'access_denied', 'Unauthorized access attempt to student database');
                 header('Location: /access-denied.php');
                 exit();
             }
 
+            // Handle GET requests for download template
+            if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action']) && $_GET['action'] === 'download_template') {
+                $this->generateCsvTemplate();
+                exit(); // Important: Stop execution after download
+            }
+
+            // Handle POST requests
             if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $this->handleRequest();
             }
@@ -307,7 +312,7 @@ class StudentDatabase extends ppim
         $action = $_POST['action'] ?? '';
         $table = $_POST['table'] ?? '';
 
-        // Handle clear logs action - THIS IS NEW
+        // Handle clear logs action
         if ($action === 'clear_logs') {
             try {
                 $deleted = $this->logger->clearOldLogs(30);
@@ -318,8 +323,14 @@ class StudentDatabase extends ppim
             return;
         }
 
+        // Handle CSV upload
+        if ($action === 'csv_upload') {
+            $this->handleCsvUpload();
+            return;
+        }
+
         if (!$this->validateTableName($table)) {
-            // Log invalid table attempts - THIS IS NEW
+            // Log invalid table attempts
             $this->logger->log('error', 'system', 'validation', 'Invalid table name attempted: ' . $table);
             $this->showAlert('Error: Invalid table name', 'danger');
             return;
@@ -337,12 +348,12 @@ class StudentDatabase extends ppim
                     $this->handleDelete($table, $_POST);
                     break;
                 default:
-                    // Log invalid actions - THIS IS NEW
+                    // Log invalid actions
                     $this->logger->log('error', 'system', 'validation', 'Invalid action attempted: ' . $action);
                     $this->showAlert('Error: Invalid action', 'danger');
             }
         } catch (Exception $e) {
-            // Log general errors - THIS IS NEW
+            // Log general errors
             $this->logger->log('error', $table, $action, 'Exception in handleRequest: ' . $e->getMessage(), $_POST);
             $this->showAlert('Error: ' . htmlspecialchars($e->getMessage()), 'danger');
         }
@@ -445,10 +456,9 @@ class StudentDatabase extends ppim
     private function handleCreate($table, $data)
     {
         try {
-            // Log the attempt - THIS IS NEW
+            // Log the attempt
             $this->logger->log('info', $table, 'create', "Attempting to create new record in $table", $data);
 
-            // Your existing create code here...
             switch ($table) {
                 case 'university_type':
                     $stmt = $this->conn->prepare("INSERT INTO university_type (type_name, description) VALUES (?, ?)");
@@ -551,7 +561,7 @@ class StudentDatabase extends ppim
             if ($stmt->execute()) {
                 $record_id = $this->conn->insert_id;
 
-                // Log success - THIS IS NEW
+                // Log success
                 $this->logger->log(
                     'success',
                     $table,
@@ -566,7 +576,7 @@ class StudentDatabase extends ppim
             }
             $stmt->close();
         } catch (Exception $e) {
-            // Log error - THIS IS NEW
+            // Log error
             $this->logger->log(
                 'error',
                 $table,
@@ -586,6 +596,7 @@ class StudentDatabase extends ppim
         try {
             // Log the attempt
             $this->logger->log('info', $table, 'update', "Attempting to update record in $table", $data);
+
             switch ($table) {
                 case 'university_type':
                     $stmt = $this->conn->prepare("UPDATE university_type SET type_name = ?, description = ? WHERE type_id = ?");
@@ -707,7 +718,7 @@ class StudentDatabase extends ppim
     }
 
     /**
-     * Handle DELETE operations - COMPLETE VERSION
+     * Handle DELETE operations
      */
     private function handleDelete($table, $data)
     {
@@ -908,6 +919,446 @@ class StudentDatabase extends ppim
         }
 
         return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Handle CSV upload for students
+     */
+    private function handleCsvUpload()
+    {
+        try {
+            if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('No file uploaded or upload error occurred');
+            }
+
+            $file = $_FILES['csv_file'];
+
+            // Validate file type
+            $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($fileExtension, ['csv', 'txt'])) {
+                throw new Exception('Please upload a CSV file');
+            }
+
+            // Validate file size (max 5MB)
+            if ($file['size'] > 5 * 1024 * 1024) {
+                throw new Exception('File size too large. Maximum 5MB allowed');
+            }
+
+            // Log the upload attempt
+            $this->logger->log('info', 'student', 'csv_upload', 'Starting CSV upload: ' . $file['name'], [
+                'filename' => $file['name'],
+                'filesize' => $file['size']
+            ]);
+
+            // Process the CSV file
+            $result = $this->processCsvFile($file['tmp_name']);
+
+            // Log success
+            $this->logger->log(
+                'success',
+                'student',
+                'csv_upload',
+                "CSV upload completed successfully. Processed: {$result['total']}, Success: {$result['success']}, Errors: {$result['errors']}",
+                $result
+            );
+
+            // Show success message
+            $message = "CSV upload completed! Processed {$result['total']} rows: {$result['success']} successful, {$result['errors']} errors.";
+            if ($result['errors'] > 0) {
+                $message .= " Check the details below for error information.";
+            }
+
+            $this->showAlert($message, $result['errors'] > 0 ? 'warning' : 'success');
+
+            // If there are errors, show them in a simple format
+            if ($result['errors'] > 0 && !empty($result['error_details'])) {
+                $this->showCsvErrors($result['error_details']);
+            }
+        } catch (Exception $e) {
+            $this->logger->log('error', 'student', 'csv_upload', 'CSV upload failed: ' . $e->getMessage(), [
+                'filename' => $_FILES['csv_file']['name'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+
+            $this->showAlert('CSV upload failed: ' . $e->getMessage(), 'danger');
+        }
+    }
+
+    /**
+     * Show CSV errors in a simple format
+     */
+    private function showCsvErrors($errorDetails)
+    {
+        $errorCount = min(count($errorDetails), 10); // Show max 10 errors
+        $errorList = "";
+
+        for ($i = 0; $i < $errorCount; $i++) {
+            $error = $errorDetails[$i];
+            $errorList .= "Row {$error['row']}: {$error['error']}\\n";
+        }
+
+        if (count($errorDetails) > 10) {
+            $errorList .= "... and " . (count($errorDetails) - 10) . " more errors.";
+        }
+
+        echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-warning alert-dismissible fade show mt-3';
+                    errorAlert.innerHTML = `
+                        <h6><i class='ti ti-alert-triangle me-1'></i>Import Errors Found:</h6>
+                        <pre style='white-space: pre-wrap; font-size: 0.875em;'>" . htmlspecialchars($errorList, ENT_QUOTES) . "</pre>
+                        <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
+                    `;
+                    
+                    const csvSection = document.getElementById('csvUpload');
+                    if (csvSection && csvSection.classList.contains('show')) {
+                        csvSection.querySelector('.card-body').appendChild(errorAlert);
+                    }
+                });
+              </script>";
+    }
+
+    /**
+     * Process CSV file and import students
+     */
+    private function processCsvFile($filePath)
+    {
+        $results = [
+            'total' => 0,
+            'success' => 0,
+            'errors' => 0,
+            'error_details' => []
+        ];
+
+        if (($handle = fopen($filePath, "r")) === FALSE) {
+            throw new Exception('Could not open CSV file');
+        }
+
+        // Read header row
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            throw new Exception('CSV file appears to be empty');
+        }
+
+        // Normalize headers (remove BOM, trim, lowercase)
+        $header = array_map(function ($h) {
+            return strtolower(trim($h, " \t\n\r\0\x0B\xEF\xBB\xBF"));
+        }, $header);
+
+        // Expected columns mapping
+        $expectedColumns = [
+            'fullname' => ['fullname', 'full_name', 'name', 'student_name'],
+            'university_id' => ['university_id', 'university', 'uni_id'],
+            'dob' => ['dob', 'date_of_birth', 'birth_date'],
+            'email' => ['email', 'email_address'],
+            'passport' => ['passport', 'passport_number'],
+            'phone_number' => ['phone_number', 'phone', 'mobile'],
+            'postcode_id' => ['postcode_id', 'postcode', 'zip_code'],
+            'address' => ['address', 'home_address'],
+            'expected_graduate' => ['expected_graduate', 'graduation_date', 'grad_date'],
+            'degree' => ['degree', 'course', 'program'],
+            'level_of_qualification_id' => ['level_of_qualification_id', 'qualification_level', 'level'],
+            'status_id' => ['status_id', 'status']
+        ];
+
+        // Map CSV columns to database columns
+        $columnMap = [];
+        foreach ($expectedColumns as $dbColumn => $possibleNames) {
+            foreach ($possibleNames as $possible) {
+                if (in_array($possible, $header)) {
+                    $columnMap[$dbColumn] = array_search($possible, $header);
+                    break;
+                }
+            }
+        }
+
+        // Check if required columns exist
+        if (!isset($columnMap['fullname'])) {
+            fclose($handle);
+            throw new Exception('Required column "fullname" not found in CSV. Please check your CSV headers.');
+        }
+
+        $rowNumber = 1; // Start from 1 (header row)
+
+        while (($row = fgetcsv($handle)) !== FALSE) {
+            $rowNumber++;
+            $results['total']++;
+
+            try {
+                // Skip empty rows
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                // Prepare data for insertion
+                $studentData = $this->mapCsvRowToStudent($row, $columnMap);
+
+                // Validate required fields
+                if (empty($studentData['fullname'])) {
+                    throw new Exception("Full name is required");
+                }
+
+                // Insert student
+                $this->insertStudentFromCsv($studentData);
+                $results['success']++;
+            } catch (Exception $e) {
+                $results['errors']++;
+                $results['error_details'][] = [
+                    'row' => $rowNumber,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        fclose($handle);
+        return $results;
+    }
+
+    /**
+     * Map CSV row to student data array
+     */
+    private function mapCsvRowToStudent($row, $columnMap)
+    {
+        $studentData = [];
+
+        foreach ($columnMap as $dbColumn => $csvIndex) {
+            $value = isset($row[$csvIndex]) ? trim($row[$csvIndex]) : null;
+
+            // Convert empty strings to null
+            if ($value === '') {
+                $value = null;
+            }
+
+            // Special handling for specific columns
+            switch ($dbColumn) {
+                case 'university_id':
+                case 'postcode_id':
+                case 'level_of_qualification_id':
+                case 'status_id':
+                    $studentData[$dbColumn] = $value ? (int)$value : null;
+                    break;
+
+                case 'dob':
+                case 'expected_graduate':
+                    if ($value) {
+                        // Try to parse date in various formats
+                        $date = $this->parseDate($value);
+                        $studentData[$dbColumn] = $date;
+                    } else {
+                        $studentData[$dbColumn] = null;
+                    }
+                    break;
+
+                case 'email':
+                    if ($value && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                        throw new Exception("Invalid email format: $value");
+                    }
+                    $studentData[$dbColumn] = $value;
+                    break;
+
+                default:
+                    $studentData[$dbColumn] = $value;
+            }
+        }
+
+        // Set defaults for required fields
+        if (!isset($studentData['status_id']) || $studentData['status_id'] === null) {
+            $studentData['status_id'] = 1; // Default to active status
+        }
+        if (!isset($studentData['is_active'])) {
+            $studentData['is_active'] = 1; // Default to active
+        }
+
+        return $studentData;
+    }
+
+    /**
+     * Parse date from various formats
+     */
+    private function parseDate($dateString)
+    {
+        // Common date formats to try
+        $formats = [
+            'Y-m-d',        // 2024-01-15 (ISO format)
+            'd/m/Y',        // 15/01/2024
+            'm/d/Y',        // 01/15/2024
+            'd-m-Y',        // 15-01-2024
+            'm-d-Y',        // 01-15-2024
+            'Y/m/d',        // 2024/01/15
+            'd.m.Y',        // 15.01.2024
+            'Y.m.d'         // 2024.01.15
+        ];
+
+        foreach ($formats as $format) {
+            $date = DateTime::createFromFormat($format, $dateString);
+            if ($date !== false) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        // Try strtotime as fallback
+        $timestamp = strtotime($dateString);
+        if ($timestamp !== false) {
+            return date('Y-m-d', $timestamp);
+        }
+
+        throw new Exception("Invalid date format: $dateString (expected YYYY-MM-DD)");
+    }
+
+    /**
+     * Insert student from CSV data
+     */
+    private function insertStudentFromCsv($data)
+    {
+        $stmt = $this->conn->prepare("
+            INSERT INTO student (
+                fullname, university_id, dob, email, passport, phone_number, 
+                postcode_id, address, expected_graduate, degree, 
+                level_of_qualification_id, status_id, is_active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->conn->error);
+        }
+
+        // Ensure all values are properly typed
+        $fullname = $data['fullname'] ?? '';
+        $university_id = $data['university_id'] ?? null;
+        $dob = $data['dob'] ?? null;
+        $email = $data['email'] ?? null;
+        $passport = $data['passport'] ?? null;
+        $phone_number = $data['phone_number'] ?? null;
+        $postcode_id = $data['postcode_id'] ?? null;
+        $address = $data['address'] ?? null;
+        $expected_graduate = $data['expected_graduate'] ?? null;
+        $degree = $data['degree'] ?? null;
+        $level_of_qualification_id = $data['level_of_qualification_id'] ?? null;
+        $status_id = $data['status_id'] ?? 1;
+        $is_active = $data['is_active'] ?? 1;
+
+        $stmt->bind_param(
+            "sissssisssiii",
+            $fullname,                      // string
+            $university_id,                 // int or null
+            $dob,                          // string or null (date)
+            $email,                        // string or null
+            $passport,                     // string or null
+            $phone_number,                 // string or null
+            $postcode_id,                  // int or null
+            $address,                      // string or null
+            $expected_graduate,            // string or null (date)
+            $degree,                       // string or null
+            $level_of_qualification_id,    // int or null
+            $status_id,                    // int
+            $is_active                     // int
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Database error: " . $stmt->error);
+        }
+
+        $studentId = $this->conn->insert_id;
+        $stmt->close();
+
+        return $studentId;
+    }
+
+    /**
+     * Generate CSV template for download
+     */
+    public function generateCsvTemplate()
+    {
+        try {
+            // Log the download attempt
+            $this->logger->log('info', 'student', 'download_template', 'CSV template downloaded');
+
+            $headers = [
+                'fullname',
+                'university_id',
+                'dob',
+                'email',
+                'passport',
+                'phone_number',
+                'postcode_id',
+                'address',
+                'expected_graduate',
+                'degree',
+                'level_of_qualification_id',
+                'status_id'
+            ];
+
+            // Clear any previous output
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            // Set proper headers for download
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="student_import_template.csv"');
+            header('Cache-Control: max-age=0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+
+            // Open output stream
+            $output = fopen('php://output', 'w');
+
+            // Add BOM for UTF-8 (helps with Excel)
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // Write header row
+            fputcsv($output, $headers);
+
+            // Add sample row with example data
+            fputcsv($output, [
+                'Ahmad Bin Ali',           // fullname
+                '1',                       // university_id (example: 1)
+                '1995-01-15',             // dob (YYYY-MM-DD format)
+                'ahmad.ali@email.com',     // email
+                'A1234567',               // passport
+                '+60123456789',           // phone_number
+                '50000',                  // postcode_id (example: 50000)
+                'No 123, Jalan Example, Kuala Lumpur', // address
+                '2025-12-31',             // expected_graduate
+                'Computer Science',        // degree
+                '1',                      // level_of_qualification_id (example: 1)
+                '1'                       // status_id (example: 1 for Active)
+            ]);
+
+            // Add instruction row (as comment)
+            fputcsv($output, [
+                '// Instructions: Replace this row with actual data',
+                '// university_id: Get from Universities table',
+                '// Date format: YYYY-MM-DD',
+                '// Use valid email format',
+                '// postcode_id: Must exist in postcode table',
+                '// Phone: Include country code',
+                '// postcode_id: 5-digit postal code',
+                '// Address: Full address',
+                '// Date format: YYYY-MM-DD',
+                '// Degree/Course name',
+                '// qualification_level_id: From qualification table',
+                '// status_id: 1=Active, 2=Inactive, etc.'
+            ]);
+
+            fclose($output);
+        } catch (Exception $e) {
+            // Log error
+            $this->logger->log('error', 'student', 'download_template', 'Failed to generate CSV template: ' . $e->getMessage());
+
+            // Clear output and show error
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            header('HTTP/1.1 500 Internal Server Error');
+            header('Content-Type: text/plain');
+            echo 'Error generating CSV template: ' . $e->getMessage();
+        }
+
+        exit();
     }
 
     /**

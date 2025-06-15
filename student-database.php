@@ -849,16 +849,83 @@ $credit_footer = '
                 <div id="student" class="row table-section">
                     <div class="col">
                         <div class="card mb-4">
-                            <div
-                                class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
+                            <div class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
                                 <h4 class="header-title">Students</h4>
-                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
-                                    data-bs-target="#addStudent">
-                                    <i class="ti ti-plus fs-16"></i> Add New
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <!-- CSV Upload Button -->
+                                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="collapse" data-bs-target="#csvUpload">
+                                        <i class="ti ti-upload fs-16"></i> Upload CSV
+                                    </button>
+                                    <!-- Regular Add Button -->
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addStudent">
+                                        <i class="ti ti-plus fs-16"></i> Add New
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
-                                <!-- Add Form -->
+                                <!-- CSV Upload Form (Collapsible) -->
+                                <div class="collapse mb-3" id="csvUpload">
+                                    <div class="card card-body">
+                                        <h5 class="card-title">Import Students (CSV)</h5>
+                                        <form method="POST" enctype="multipart/form-data" class="row g-3">
+                                            <input type="hidden" name="action" value="csv_upload">
+
+                                            <div class="col-md-8">
+                                                <label class="form-label">Select CSV File</label>
+                                                <input type="file" name="csv_file" class="form-control" accept=".csv,.txt" required>
+                                                <div class="form-text">
+                                                    <i class="ti ti-info-circle me-1"></i>
+                                                    File must be in CSV format. Maximum size: 5MB
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label">Template</label>
+                                                <div class="d-grid">
+                                                    <a href="?action=download_template" class="btn btn-outline-secondary">
+                                                        <i class="ti ti-download me-1"></i>
+                                                        Download Template
+                                                    </a>
+                                                </div>
+                                            </div>
+
+                                            <!-- requirements section -->
+                                            <div class="col-12">
+                                                <div class="border border-dashed pt-2 pb-2">
+                                                    <h6><i class="ti ti-lightbulb me-1"></i>CSV Format Requirements:</h6>
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <ul class="mb-0 text-muted small">
+                                                                <li><strong>Required:</strong> fullname</li>
+                                                                <li><strong>Date format:</strong> YYYY-MM-DD</li>
+                                                                <li><strong>Email:</strong> Valid email format</li>
+                                                            </ul>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <ul class="mb-0 text-muted small">
+                                                                <li><strong>ID fields:</strong> Use numeric IDs</li>
+                                                                <li><strong>Phone:</strong> Include country code</li>
+                                                                <li><strong>Optional:</strong> All other fields</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="ti ti-upload me-1"></i>
+                                                    Upload and Import
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#csvUpload">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Add Form (Collapsible) -->
                                 <div class="collapse mb-3" id="addStudent">
                                     <div class="card card-body">
                                         <h5 class="card-title">Add New Student</h5>
@@ -876,9 +943,9 @@ $credit_footer = '
                                                     <?php
                                                     $universities = $studentDB->getDropdownOptions('university', 'university_id', 'university_name');
                                                     foreach ($universities as $university): ?>
-                                                        <option
-                                                            value="<?= htmlspecialchars($university['university_id']) ?>">
-                                                            <?= htmlspecialchars($university['university_name']) ?></option>
+                                                        <option value="<?= htmlspecialchars($university['university_id']) ?>">
+                                                            <?= htmlspecialchars($university['university_name']) ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
@@ -888,9 +955,9 @@ $credit_footer = '
                                                     <?php
                                                     $statuses = $studentDB->getDropdownOptions('student_status', 'status_id', 'status_name');
                                                     foreach ($statuses as $status): ?>
-                                                        <option value="<?= htmlspecialchars($status['status_id']) ?>"
-                                                            <?= $status['status_id'] == 1 ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($status['status_name']) ?></option>
+                                                        <option value="<?= htmlspecialchars($status['status_id']) ?>" <?= $status['status_id'] == 1 ? 'selected' : '' ?>>
+                                                            <?= htmlspecialchars($status['status_name']) ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
@@ -904,8 +971,7 @@ $credit_footer = '
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Passport Number</label>
-                                                <input type="text" name="passport" class="form-control"
-                                                    placeholder="A1234567">
+                                                <input type="text" name="passport" class="form-control" placeholder="A1234567">
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Phone Number</label>
@@ -919,8 +985,8 @@ $credit_footer = '
                                                     $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
                                                     foreach ($postcodes as $postcode): ?>
                                                         <option value="<?= htmlspecialchars($postcode['zip_code']) ?>">
-                                                            <?= htmlspecialchars($postcode['zip_code']) ?> -
-                                                            <?= htmlspecialchars($postcode['city']) ?></option>
+                                                            <?= htmlspecialchars($postcode['zip_code']) ?> - <?= htmlspecialchars($postcode['city']) ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
@@ -944,7 +1010,8 @@ $credit_footer = '
                                                     $levels = $studentDB->getDropdownOptions('qualification_level', 'level_id', 'level_name');
                                                     foreach ($levels as $level): ?>
                                                         <option value="<?= htmlspecialchars($level['level_id']) ?>">
-                                                            <?= htmlspecialchars($level['level_name']) ?></option>
+                                                            <?= htmlspecialchars($level['level_name']) ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
@@ -979,8 +1046,10 @@ $credit_footer = '
                                                     <td><?= htmlspecialchars($row['fullname']) ?></td>
                                                     <td><?= htmlspecialchars($row['university_name'] ?? '') ?></td>
                                                     <td><?= htmlspecialchars($row['email'] ?? '') ?></td>
-                                                    <td><span
-                                                            class="badge bg-<?= $row['status_id'] == 1 ? 'success' : ($row['status_id'] == 2 ? 'primary' : 'secondary') ?>"><?= htmlspecialchars($row['status_name'] ?? '') ?></span>
+                                                    <td>
+                                                        <span class="badge bg-<?= $row['status_id'] == 1 ? 'success' : ($row['status_id'] == 2 ? 'primary' : 'secondary') ?>">
+                                                            <?= htmlspecialchars($row['status_name'] ?? '') ?>
+                                                        </span>
                                                     </td>
                                                     <td><?= htmlspecialchars($row['degree'] ?? '') ?></td>
                                                     <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
@@ -993,8 +1062,7 @@ $credit_footer = '
                                                         <form method="POST" style="display:inline;">
                                                             <input type="hidden" name="action" value="delete">
                                                             <input type="hidden" name="table" value="student">
-                                                            <input type="hidden" name="id"
-                                                                value="<?= htmlspecialchars($row['student_id']) ?>">
+                                                            <input type="hidden" name="id" value="<?= htmlspecialchars($row['student_id']) ?>">
                                                             <button type="submit" class="btn btn-danger btn-sm"
                                                                 onclick="return confirm('Are you sure?')">
                                                                 <i class="ti ti-trash"></i> Delete
@@ -1002,50 +1070,37 @@ $credit_footer = '
                                                         </form>
 
                                                         <!-- Edit Modal -->
-                                                        <div class="modal fade"
-                                                            id="editStudentModal<?= $row['student_id'] ?>" tabindex="-1">
+                                                        <div class="modal fade" id="editStudentModal<?= $row['student_id'] ?>" tabindex="-1">
                                                             <div class="modal-dialog modal-lg">
                                                                 <div class="modal-content">
                                                                     <div class="modal-header">
                                                                         <h5 class="modal-title">Edit Student</h5>
-                                                                        <button type="button" class="btn-close"
-                                                                            data-bs-dismiss="modal"></button>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                                     </div>
                                                                     <form method="POST">
                                                                         <div class="modal-body">
-                                                                            <input type="hidden" name="action"
-                                                                                value="update">
-                                                                            <input type="hidden" name="table"
-                                                                                value="student">
-                                                                            <input type="hidden" name="student_id"
-                                                                                value="<?= htmlspecialchars($row['student_id']) ?>">
+                                                                            <input type="hidden" name="action" value="update">
+                                                                            <input type="hidden" name="table" value="student">
+                                                                            <input type="hidden" name="student_id" value="<?= htmlspecialchars($row['student_id']) ?>">
                                                                             <div class="row g-3">
                                                                                 <div class="col-md-6">
-                                                                                    <label class="form-label">Full
-                                                                                        Name</label>
-                                                                                    <input type="text" name="fullname"
-                                                                                        class="form-control"
-                                                                                        value="<?= htmlspecialchars($row['fullname']) ?>"
-                                                                                        required>
+                                                                                    <label class="form-label">Full Name</label>
+                                                                                    <input type="text" name="fullname" class="form-control"
+                                                                                        value="<?= htmlspecialchars($row['fullname']) ?>" required>
                                                                                 </div>
                                                                                 <div class="col-md-6">
                                                                                     <label class="form-label">Email</label>
-                                                                                    <input type="email" name="email"
-                                                                                        class="form-control"
+                                                                                    <input type="email" name="email" class="form-control"
                                                                                         value="<?= htmlspecialchars($row['email'] ?? '') ?>">
                                                                                 </div>
                                                                                 <div class="col-md-6">
-                                                                                    <label
-                                                                                        class="form-label">University</label>
-                                                                                    <select name="university_id"
-                                                                                        class="form-select">
-                                                                                        <option value="">Select University
-                                                                                        </option>
+                                                                                    <label class="form-label">University</label>
+                                                                                    <select name="university_id" class="form-select">
+                                                                                        <option value="">Select University</option>
                                                                                         <?php
                                                                                         $universities = $studentDB->getDropdownOptions('university', 'university_id', 'university_name');
                                                                                         foreach ($universities as $university): ?>
-                                                                                            <option
-                                                                                                value="<?= htmlspecialchars($university['university_id']) ?>"
+                                                                                            <option value="<?= htmlspecialchars($university['university_id']) ?>"
                                                                                                 <?= $row['university_id'] == $university['university_id'] ? 'selected' : '' ?>>
                                                                                                 <?= htmlspecialchars($university['university_name']) ?>
                                                                                             </option>
@@ -1054,13 +1109,11 @@ $credit_footer = '
                                                                                 </div>
                                                                                 <div class="col-md-6">
                                                                                     <label class="form-label">Status</label>
-                                                                                    <select name="status_id"
-                                                                                        class="form-select">
+                                                                                    <select name="status_id" class="form-select">
                                                                                         <?php
                                                                                         $statuses = $studentDB->getDropdownOptions('student_status', 'status_id', 'status_name');
                                                                                         foreach ($statuses as $status): ?>
-                                                                                            <option
-                                                                                                value="<?= htmlspecialchars($status['status_id']) ?>"
+                                                                                            <option value="<?= htmlspecialchars($status['status_id']) ?>"
                                                                                                 <?= $row['status_id'] == $status['status_id'] ? 'selected' : '' ?>>
                                                                                                 <?= htmlspecialchars($status['status_name']) ?>
                                                                                             </option>
@@ -1068,53 +1121,67 @@ $credit_footer = '
                                                                                     </select>
                                                                                 </div>
                                                                                 <div class="col-md-6">
-                                                                                    <label
-                                                                                        class="form-label">Passport</label>
-                                                                                    <input type="text" name="passport"
-                                                                                        class="form-control"
+                                                                                    <label class="form-label">Degree</label>
+                                                                                    <input type="text" name="degree" class="form-control"
+                                                                                        value="<?= htmlspecialchars($row['degree'] ?? '') ?>">
+                                                                                </div>
+                                                                                <div class="col-md-6">
+                                                                                    <label class="form-label">Qualification Level</label>
+                                                                                    <select name="level_of_qualification_id" class="form-select">
+                                                                                        <option value="">Select Qualification Level</option>
+                                                                                        <?php
+                                                                                        $levels = $studentDB->getDropdownOptions('qualification_level', 'level_id', 'level_name');
+                                                                                        foreach ($levels as $level): ?>
+                                                                                            <option value="<?= htmlspecialchars($level['level_id']) ?>"
+                                                                                                <?= $row['level_of_qualification_id'] == $level['level_id'] ? 'selected' : '' ?>>
+                                                                                                <?= htmlspecialchars($level['level_name']) ?>
+                                                                                            </option>
+                                                                                        <?php endforeach; ?>
+                                                                                    </select>
+                                                                                </div>
+                                                                                <div class="col-md-6">
+                                                                                    <label class="form-label">Passport</label>
+                                                                                    <input type="text" name="passport" class="form-control"
                                                                                         value="<?= htmlspecialchars($row['passport'] ?? '') ?>">
                                                                                 </div>
                                                                                 <div class="col-md-6">
                                                                                     <label class="form-label">Phone</label>
-                                                                                    <input type="text" name="phone_number"
-                                                                                        class="form-control"
+                                                                                    <input type="text" name="phone_number" class="form-control"
                                                                                         value="<?= htmlspecialchars($row['phone_number'] ?? '') ?>">
                                                                                 </div>
                                                                                 <div class="col-md-6">
-                                                                                    <label class="form-label">Date of
-                                                                                        Birth</label>
-                                                                                    <input type="date" name="dob"
-                                                                                        class="form-control"
+                                                                                    <label class="form-label">Date of Birth</label>
+                                                                                    <input type="date" name="dob" class="form-control"
                                                                                         value="<?= htmlspecialchars($row['dob'] ?? '') ?>">
                                                                                 </div>
                                                                                 <div class="col-md-6">
-                                                                                    <label class="form-label">Expected
-                                                                                        Graduate</label>
-                                                                                    <input type="date"
-                                                                                        name="expected_graduate"
-                                                                                        class="form-control"
+                                                                                    <label class="form-label">Expected Graduate</label>
+                                                                                    <input type="date" name="expected_graduate" class="form-control"
                                                                                         value="<?= htmlspecialchars($row['expected_graduate'] ?? '') ?>">
                                                                                 </div>
-                                                                                <div class="col-12">
-                                                                                    <label class="form-label">Degree</label>
-                                                                                    <input type="text" name="degree"
-                                                                                        class="form-control"
-                                                                                        value="<?= htmlspecialchars($row['degree'] ?? '') ?>">
+                                                                                <div class="col-md-6">
+                                                                                    <label class="form-label">Postcode</label>
+                                                                                    <select name="postcode_id" class="form-select">
+                                                                                        <option value="">Select Postcode</option>
+                                                                                        <?php
+                                                                                        $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
+                                                                                        foreach ($postcodes as $postcode): ?>
+                                                                                            <option value="<?= htmlspecialchars($postcode['zip_code']) ?>"
+                                                                                                <?= $row['postcode_id'] == $postcode['zip_code'] ? 'selected' : '' ?>>
+                                                                                                <?= htmlspecialchars($postcode['zip_code']) ?> - <?= htmlspecialchars($postcode['city']) ?>
+                                                                                            </option>
+                                                                                        <?php endforeach; ?>
+                                                                                    </select>
                                                                                 </div>
                                                                                 <div class="col-12">
-                                                                                    <label
-                                                                                        class="form-label">Address</label>
-                                                                                    <textarea name="address"
-                                                                                        class="form-control"
-                                                                                        rows="3"><?= htmlspecialchars($row['address'] ?? '') ?></textarea>
+                                                                                    <label class="form-label">Address</label>
+                                                                                    <textarea name="address" class="form-control" rows="3"><?= htmlspecialchars($row['address'] ?? '') ?></textarea>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
                                                                         <div class="modal-footer">
-                                                                            <button type="button" class="btn btn-secondary"
-                                                                                data-bs-dismiss="modal">Cancel</button>
-                                                                            <button type="submit"
-                                                                                class="btn btn-primary">Update</button>
+                                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                            <button type="submit" class="btn btn-primary">Update</button>
                                                                         </div>
                                                                     </form>
                                                                 </div>
@@ -2038,6 +2105,8 @@ $credit_footer = '
                 <script src="assets/js/database-nav.js"></script>
 
                 <script src="assets/js/database-log.js"></script>
+
+                <script src="assets/js/database-students-csv-upload.js"></script>
 
 </body>
 
