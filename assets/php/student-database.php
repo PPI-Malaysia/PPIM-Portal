@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Student Database Management Class
  * Only accessible to user_type >= 5 and < 100
@@ -7,10 +8,241 @@
 
 require_once("assets/php/main.php");
 
-class StudentDatabase extends ppim {
+class DatabaseLogger
+{
+    private $user_id;
+    private $user_name;
+    private $log_file;
+    private $log_dir;
+
+    public function __construct($user_id, $user_name)
+    {
+        $this->user_id = $user_id;
+        $this->user_name = $user_name;
+        $this->log_dir = __DIR__ . '/../../logs/';
+        $this->log_file = $this->log_dir . 'database.log';
+        $this->createLogDirectory();
+    }
+
+    /**
+     * Create log directory if it doesn't exist
+     */
+    private function createLogDirectory()
+    {
+        if (!is_dir($this->log_dir)) {
+            mkdir($this->log_dir, 0755, true);
+        }
+
+        // Create .htaccess to protect log files
+        $htaccess_file = $this->log_dir . '.htaccess';
+        if (!file_exists($htaccess_file)) {
+            file_put_contents($htaccess_file, "Order Deny,Allow\nDeny from all");
+        }
+    }
+
+    /**
+     * Log an operation
+     */
+    public function log($level, $table, $action, $message, $details = null)
+    {
+        $timestamp = date('Y-m-d H:i:s');
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+        $log_entry = [
+            'timestamp' => $timestamp,
+            'level' => $level,
+            'table' => $table,
+            'action' => $action,
+            'user_id' => $this->user_id,
+            'user_name' => $this->user_name,
+            'message' => $message,
+            'details' => $details,
+            'ip_address' => $ip_address
+        ];
+
+        $log_line = json_encode($log_entry) . "\n";
+
+        // Append to log file
+        file_put_contents($this->log_file, $log_line, FILE_APPEND | LOCK_EX);
+
+        // Rotate log file if it gets too large (>5MB)
+        if (file_exists($this->log_file) && filesize($this->log_file) > 5 * 1024 * 1024) {
+            $this->rotateLogFile();
+        }
+    }
+
+    /**
+     * Rotate log file
+     */
+    private function rotateLogFile()
+    {
+        $backup_file = $this->log_dir . 'database_' . date('Y-m-d_H-i-s') . '.log';
+        rename($this->log_file, $backup_file);
+        touch($this->log_file);
+    }
+
+    /**
+     * Get logs with optional filters
+     */
+
+    private function getLogsFromLargeFile($limit, $filters = [])
+    {
+        // Simple implementation for large files
+        $handle = fopen($this->log_file, 'r');
+        if (!$handle) return [];
+
+        $logs = [];
+        $lines = [];
+
+        // Read last 1000 lines efficiently
+        fseek($handle, -min(filesize($this->log_file), 50000), SEEK_END);
+        while (($line = fgets($handle)) !== false) {
+            $lines[] = trim($line);
+        }
+        fclose($handle);
+
+        // Process similar to original method
+        $lines = array_reverse($lines);
+        foreach ($lines as $line) {
+            if (empty($line)) continue;
+            $log_entry = json_decode($line, true);
+            if (!$log_entry) continue;
+
+            // Apply filters (same logic as original)
+            if (!empty($filters['level']) && $log_entry['level'] !== $filters['level']) continue;
+            if (!empty($filters['table']) && $log_entry['table'] !== $filters['table']) continue;
+            if (!empty($filters['action']) && $log_entry['action'] !== $filters['action']) continue;
+            if (!empty($filters['date']) && date('Y-m-d', strtotime($log_entry['timestamp'])) !== $filters['date']) continue;
+
+            $logs[] = $log_entry;
+            if (count($logs) >= $limit) break;
+        }
+
+        return $logs;
+    }
+
+    public function getLogs($limit = 50, $filters = [])
+    {
+        if (!file_exists($this->log_file)) {
+            return [];
+        }
+
+        // Check file size before loading (prevent memory issues)
+        $fileSize = filesize($this->log_file);
+        if ($fileSize > 10 * 1024 * 1024) { // 10MB limit
+            // For large files, read from the end
+            return $this->getLogsFromLargeFile($limit, $filters);
+        }
+
+        $logs = [];
+        $lines = file($this->log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        // Reverse to get newest first
+        $lines = array_reverse($lines);
+
+        foreach ($lines as $line) {
+            $log_entry = json_decode($line, true);
+            if (!$log_entry) continue;
+
+            // Apply filters
+            if (!empty($filters['level']) && $log_entry['level'] !== $filters['level']) continue;
+            if (!empty($filters['table']) && $log_entry['table'] !== $filters['table']) continue;
+            if (!empty($filters['action']) && $log_entry['action'] !== $filters['action']) continue;
+            if (!empty($filters['date']) && date('Y-m-d', strtotime($log_entry['timestamp'])) !== $filters['date']) continue;
+
+            $logs[] = $log_entry;
+
+            // Limit results
+            if (count($logs) >= $limit) break;
+        }
+
+        return $logs;
+    }
+
+    /**
+     * Get log statistics for today
+     */
+    public function getLogStats()
+    {
+        $today = date('Y-m-d');
+        $stats = ['total' => 0, 'success' => 0, 'warning' => 0, 'error' => 0, 'info' => 0];
+
+        if (!file_exists($this->log_file)) {
+            return $stats;
+        }
+
+        $lines = file($this->log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        foreach ($lines as $line) {
+            $log_entry = json_decode($line, true);
+            if (!$log_entry) continue;
+
+            // Only count today's logs
+            if (date('Y-m-d', strtotime($log_entry['timestamp'])) === $today) {
+                $stats['total']++;
+                $level = $log_entry['level'] ?? 'info';
+                if (isset($stats[$level])) {
+                    $stats[$level]++;
+                }
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Clear old logs (older than specified days)
+     */
+    public function clearOldLogs($days = 30)
+    {
+        if (!file_exists($this->log_file)) {
+            return 0;
+        }
+
+        $cutoff_date = date('Y-m-d', strtotime("-$days days"));
+        $lines = file($this->log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $kept_lines = [];
+        $deleted_count = 0;
+
+        foreach ($lines as $line) {
+            $log_entry = json_decode($line, true);
+            if (!$log_entry) continue;
+
+            $log_date = date('Y-m-d', strtotime($log_entry['timestamp']));
+            if ($log_date >= $cutoff_date) {
+                $kept_lines[] = $line;
+            } else {
+                $deleted_count++;
+            }
+        }
+
+        // Rewrite file with only recent logs
+        file_put_contents($this->log_file, implode("\n", $kept_lines) . "\n");
+
+        $this->log('info', 'system_logs', 'cleanup', "Cleared $deleted_count old log entries (older than $days days)");
+
+        return $deleted_count;
+    }
+
+    /**
+     * Get total log count
+     */
+    public function getTotalLogCount()
+    {
+        if (!file_exists($this->log_file)) {
+            return 0;
+        }
+
+        $lines = file($this->log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        return count($lines);
+    }
+}
+
+class StudentDatabase extends ppim
+{
     private $allowedTables = [
         'university_type',
-        'qualification_level', 
+        'qualification_level',
         'student_status',
         'postcode',
         'university',
@@ -19,28 +251,41 @@ class StudentDatabase extends ppim {
         'ppi_campus'
     ];
 
+    private $logger;
+
+
     /**
      * Constructor - Initialize with access control
      */
-    public function __construct() {
+    public function __construct()
+    {
         try {
             parent::__construct();
-            
+
             if (!$this->conn) {
                 throw new Exception("Database connection not established");
             }
-            
+
+            // Initialize logger - THIS IS NEW
+            $this->logger = new DatabaseLogger($this->getUserId(), $this->getUserName());
+
             if (!$this->hasAccess()) {
+                // Log unauthorized access attempt - THIS IS NEW
+                $this->logger->log('warning', 'system', 'access_denied', 'Unauthorized access attempt to student database');
                 header('Location: /access-denied.php');
                 exit();
             }
-            
+
             if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $this->handleRequest();
             }
-            
         } catch (Exception $e) {
-            $this->showAlert('Constructor Error: ' . htmlspecialchars($e->getMessage()), 'danger');
+            // Try to log constructor errors if logger was initialized
+            if (isset($this->logger)) {
+                $this->logger->log('error', 'system', 'constructor', 'Constructor Error: ' . $e->getMessage());
+            }
+            // Show error and exit gracefully
+            die('Database initialization error: ' . htmlspecialchars($e->getMessage()));
         }
     }
 
@@ -48,7 +293,8 @@ class StudentDatabase extends ppim {
      * Check if user has access to student database
      * @return boolean
      */
-    private function hasAccess() {
+    private function hasAccess()
+    {
         $userType = $this->getUserType();
         return ($userType >= 5 && $userType < 100);
     }
@@ -56,11 +302,25 @@ class StudentDatabase extends ppim {
     /**
      * Handle incoming POST requests for CRUD operations
      */
-    private function handleRequest() {
+    private function handleRequest()
+    {
         $action = $_POST['action'] ?? '';
         $table = $_POST['table'] ?? '';
 
+        // Handle clear logs action - THIS IS NEW
+        if ($action === 'clear_logs') {
+            try {
+                $deleted = $this->logger->clearOldLogs(30);
+                $this->showAlert("Cleared $deleted old log entries", 'success');
+            } catch (Exception $e) {
+                $this->showAlert('Error clearing logs: ' . $e->getMessage(), 'danger');
+            }
+            return;
+        }
+
         if (!$this->validateTableName($table)) {
+            // Log invalid table attempts - THIS IS NEW
+            $this->logger->log('error', 'system', 'validation', 'Invalid table name attempted: ' . $table);
             $this->showAlert('Error: Invalid table name', 'danger');
             return;
         }
@@ -77,9 +337,13 @@ class StudentDatabase extends ppim {
                     $this->handleDelete($table, $_POST);
                     break;
                 default:
+                    // Log invalid actions - THIS IS NEW
+                    $this->logger->log('error', 'system', 'validation', 'Invalid action attempted: ' . $action);
                     $this->showAlert('Error: Invalid action', 'danger');
             }
         } catch (Exception $e) {
+            // Log general errors - THIS IS NEW
+            $this->logger->log('error', $table, $action, 'Exception in handleRequest: ' . $e->getMessage(), $_POST);
             $this->showAlert('Error: ' . htmlspecialchars($e->getMessage()), 'danger');
         }
     }
@@ -87,21 +351,23 @@ class StudentDatabase extends ppim {
     /**
      * Validate table name against allowed tables
      */
-    private function validateTableName($table) {
+    private function validateTableName($table)
+    {
         return in_array($table, $this->allowedTables, true);
     }
 
     /**
      * Show alert message using Toastify.js
      */
-    private function showAlert($message, $type = 'success') {
+    private function showAlert($message, $type = 'success')
+    {
         $configs = [
             'success' => [
                 'background' => '#28a745',
                 'duration' => 3000
             ],
             'danger' => [
-                'background' => '#dc3545', 
+                'background' => '#dc3545',
                 'duration' => 5000
             ],
             'warning' => [
@@ -113,9 +379,9 @@ class StudentDatabase extends ppim {
                 'duration' => 3000
             ]
         ];
-        
+
         $config = $configs[$type] ?? $configs['success'];
-        
+
         echo "<script>
                 document.addEventListener('DOMContentLoaded', function() {
                     Toastify({
@@ -134,7 +400,8 @@ class StudentDatabase extends ppim {
     /**
      * Show specific success messages for different operations
      */
-    private function showSuccessMessage($action, $table) {
+    private function showSuccessMessage($action, $table)
+    {
         $messages = [
             'create' => [
                 'student' => 'New student added to database',
@@ -167,7 +434,7 @@ class StudentDatabase extends ppim {
                 'postcode' => 'Postcode deleted'
             ]
         ];
-        
+
         $message = $messages[$action][$table] ?? ucfirst($action) . ' operation completed successfully';
         $this->showAlert($message, 'success');
     }
@@ -175,289 +442,362 @@ class StudentDatabase extends ppim {
     /**
      * Handle CREATE operations - COMPLETE VERSION
      */
-    private function handleCreate($table, $data) {
-        switch ($table) {
-            case 'university_type':
-                $stmt = $this->conn->prepare("INSERT INTO university_type (type_name, description) VALUES (?, ?)");
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("ss", $data['type_name'], $desc);
-                break;
+    private function handleCreate($table, $data)
+    {
+        try {
+            // Log the attempt - THIS IS NEW
+            $this->logger->log('info', $table, 'create', "Attempting to create new record in $table", $data);
 
-            case 'qualification_level':
-                $stmt = $this->conn->prepare("INSERT INTO qualification_level (level_name, level_order, description) VALUES (?, ?, ?)");
-                $level_order = (int)($data['level_order'] ?? 0);
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("sis", $data['level_name'], $level_order, $desc);
-                break;
+            // Your existing create code here...
+            switch ($table) {
+                case 'university_type':
+                    $stmt = $this->conn->prepare("INSERT INTO university_type (type_name, description) VALUES (?, ?)");
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("ss", $data['type_name'], $desc);
+                    break;
 
-            case 'student_status':
-                $stmt = $this->conn->prepare("INSERT INTO student_status (status_name, description) VALUES (?, ?)");
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("ss", $data['status_name'], $desc);
-                break;
+                case 'qualification_level':
+                    $stmt = $this->conn->prepare("INSERT INTO qualification_level (level_name, level_order, description) VALUES (?, ?, ?)");
+                    $level_order = (int)($data['level_order'] ?? 0);
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("sis", $data['level_name'], $level_order, $desc);
+                    break;
 
-            case 'postcode':
-                $stmt = $this->conn->prepare("INSERT INTO postcode (zip_code, city, state_name) VALUES (?, ?, ?)");
-                $zip_code = (int)($data['zip_code'] ?? 0);
-                $stmt->bind_param("iss", $zip_code, $data['city'], $data['state_name']);
-                break;
+                case 'student_status':
+                    $stmt = $this->conn->prepare("INSERT INTO student_status (status_name, description) VALUES (?, ?)");
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("ss", $data['status_name'], $desc);
+                    break;
 
-            case 'university':
-                $stmt = $this->conn->prepare("INSERT INTO university (university_name, address, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?)");
-                $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
-                $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
-                $address = empty($data['address']) ? null : $data['address'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                $stmt->bind_param("ssiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active);
-                break;
+                case 'postcode':
+                    $stmt = $this->conn->prepare("INSERT INTO postcode (zip_code, city, state_name) VALUES (?, ?, ?)");
+                    $zip_code = (int)($data['zip_code'] ?? 0);
+                    $stmt->bind_param("iss", $zip_code, $data['city'], $data['state_name']);
+                    break;
 
-            case 'student':
-                $stmt = $this->conn->prepare("INSERT INTO student (fullname, university_id, dob, email, passport, phone_number, postcode_id, address, expected_graduate, degree, level_of_qualification_id, status_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                
-                $university_id = empty($data['university_id']) ? null : (int)$data['university_id'];
-                $dob = empty($data['dob']) ? null : $data['dob'];
-                $email = empty($data['email']) ? null : $data['email'];
-                $passport = empty($data['passport']) ? null : $data['passport'];
-                $phone = empty($data['phone_number']) ? null : $data['phone_number'];
-                $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
-                $address = empty($data['address']) ? null : $data['address'];
-                $grad = empty($data['expected_graduate']) ? null : $data['expected_graduate'];
-                $degree = empty($data['degree']) ? null : $data['degree'];
-                $qual_id = empty($data['level_of_qualification_id']) ? null : (int)$data['level_of_qualification_id'];
-                $status_id = empty($data['status_id']) ? 1 : (int)$data['status_id'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                
-                $stmt->bind_param("sissssisssiii", 
-                    $data['fullname'], $university_id, $dob, $email, $passport, 
-                    $phone, $postcode_id, $address, $grad, $degree, 
-                    $qual_id, $status_id, $is_active
+                case 'university':
+                    $stmt = $this->conn->prepare("INSERT INTO university (university_name, address, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?)");
+                    $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
+                    $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
+                    $address = empty($data['address']) ? null : $data['address'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+                    $stmt->bind_param("ssiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active);
+                    break;
+
+                case 'student':
+                    $stmt = $this->conn->prepare("INSERT INTO student (fullname, university_id, dob, email, passport, phone_number, postcode_id, address, expected_graduate, degree, level_of_qualification_id, status_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+                    $university_id = empty($data['university_id']) ? null : (int)$data['university_id'];
+                    $dob = empty($data['dob']) ? null : $data['dob'];
+                    $email = empty($data['email']) ? null : $data['email'];
+                    $passport = empty($data['passport']) ? null : $data['passport'];
+                    $phone = empty($data['phone_number']) ? null : $data['phone_number'];
+                    $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
+                    $address = empty($data['address']) ? null : $data['address'];
+                    $grad = empty($data['expected_graduate']) ? null : $data['expected_graduate'];
+                    $degree = empty($data['degree']) ? null : $data['degree'];
+                    $qual_id = empty($data['level_of_qualification_id']) ? null : (int)$data['level_of_qualification_id'];
+                    $status_id = empty($data['status_id']) ? 1 : (int)$data['status_id'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+
+                    $stmt->bind_param(
+                        "sissssisssiii",
+                        $data['fullname'],
+                        $university_id,
+                        $dob,
+                        $email,
+                        $passport,
+                        $phone,
+                        $postcode_id,
+                        $address,
+                        $grad,
+                        $degree,
+                        $qual_id,
+                        $status_id,
+                        $is_active
+                    );
+                    break;
+
+                case 'ppim':
+                    $stmt = $this->conn->prepare("INSERT INTO ppim (student_id, start_year, end_year, department, position, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $student_id = (int)($data['student_id'] ?? 0);
+                    $start_year = (int)($data['start_year'] ?? 0);
+                    $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
+                    $position = empty($data['position']) ? null : $data['position'];
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+
+                    $stmt->bind_param("iiisssi", $student_id, $start_year, $end_year, $data['department'], $position, $desc, $is_active);
+                    break;
+
+                case 'ppi_campus':
+                    $stmt = $this->conn->prepare("INSERT INTO ppi_campus (student_id, start_year, end_year, university_id, department, position, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $student_id = (int)($data['student_id'] ?? 0);
+                    $start_year = (int)($data['start_year'] ?? 0);
+                    $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
+                    $university_id = (int)($data['university_id'] ?? 0);
+                    $dept = empty($data['department']) ? null : $data['department'];
+                    $position = empty($data['position']) ? null : $data['position'];
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+
+                    $stmt->bind_param("iiiisssi", $student_id, $start_year, $end_year, $university_id, $dept, $position, $desc, $is_active);
+                    break;
+
+                default:
+                    throw new Exception("Unsupported table for create operation: " . $table);
+            }
+
+            if ($stmt->execute()) {
+                $record_id = $this->conn->insert_id;
+
+                // Log success - THIS IS NEW
+                $this->logger->log(
+                    'success',
+                    $table,
+                    'create',
+                    "Successfully created record in $table" . ($record_id ? " (ID: $record_id)" : ""),
+                    ['record_id' => $record_id, 'data' => $data]
                 );
-                break;
 
-            case 'ppim':
-                $stmt = $this->conn->prepare("INSERT INTO ppim (student_id, start_year, end_year, department, position, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $student_id = (int)($data['student_id'] ?? 0);
-                $start_year = (int)($data['start_year'] ?? 0);
-                $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
-                $position = empty($data['position']) ? null : $data['position'];
-                $desc = empty($data['description']) ? null : $data['description'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                
-                $stmt->bind_param("iiisssi", $student_id, $start_year, $end_year, $data['department'], $position, $desc, $is_active);
-                break;
-
-            case 'ppi_campus':
-                $stmt = $this->conn->prepare("INSERT INTO ppi_campus (student_id, start_year, end_year, university_id, department, position, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $student_id = (int)($data['student_id'] ?? 0);
-                $start_year = (int)($data['start_year'] ?? 0);
-                $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
-                $university_id = (int)($data['university_id'] ?? 0);
-                $dept = empty($data['department']) ? null : $data['department'];
-                $position = empty($data['position']) ? null : $data['position'];
-                $desc = empty($data['description']) ? null : $data['description'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                
-                $stmt->bind_param("iiiisssi", $student_id, $start_year, $end_year, $university_id, $dept, $position, $desc, $is_active);
-                break;
-
-            default:
-                throw new Exception("Unsupported table for create operation: " . $table);
+                $this->showSuccessMessage('create', $table);
+            } else {
+                throw new Exception("Failed to create record: " . $stmt->error);
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            // Log error - THIS IS NEW
+            $this->logger->log(
+                'error',
+                $table,
+                'create',
+                "Failed to create record in $table: " . $e->getMessage(),
+                ['data' => $data, 'error' => $e->getMessage()]
+            );
+            throw $e;
         }
-
-        if ($stmt->execute()) {
-            $this->showSuccessMessage('create', $table);
-        } else {
-            throw new Exception("Failed to create record: " . $stmt->error);
-        }
-        $stmt->close();
     }
 
     /**
      * Handle UPDATE operations - COMPLETE VERSION
      */
-    private function handleUpdate($table, $data) {
-        switch ($table) {
-            case 'university_type':
-                $stmt = $this->conn->prepare("UPDATE university_type SET type_name = ?, description = ? WHERE type_id = ?");
-                $type_id = (int)($data['type_id'] ?? 0);
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("ssi", $data['type_name'], $desc, $type_id);
-                break;
+    private function handleUpdate($table, $data)
+    {
+        try {
+            // Log the attempt
+            $this->logger->log('info', $table, 'update', "Attempting to update record in $table", $data);
+            switch ($table) {
+                case 'university_type':
+                    $stmt = $this->conn->prepare("UPDATE university_type SET type_name = ?, description = ? WHERE type_id = ?");
+                    $type_id = (int)($data['type_id'] ?? 0);
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("ssi", $data['type_name'], $desc, $type_id);
+                    break;
 
-            case 'qualification_level':
-                $stmt = $this->conn->prepare("UPDATE qualification_level SET level_name = ?, level_order = ?, description = ? WHERE level_id = ?");
-                $level_order = (int)($data['level_order'] ?? 0);
-                $level_id = (int)($data['level_id'] ?? 0);
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("sisi", $data['level_name'], $level_order, $desc, $level_id);
-                break;
+                case 'qualification_level':
+                    $stmt = $this->conn->prepare("UPDATE qualification_level SET level_name = ?, level_order = ?, description = ? WHERE level_id = ?");
+                    $level_order = (int)($data['level_order'] ?? 0);
+                    $level_id = (int)($data['level_id'] ?? 0);
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("sisi", $data['level_name'], $level_order, $desc, $level_id);
+                    break;
 
-            case 'student_status':
-                $stmt = $this->conn->prepare("UPDATE student_status SET status_name = ?, description = ? WHERE status_id = ?");
-                $status_id = (int)($data['status_id'] ?? 0);
-                $desc = empty($data['description']) ? null : $data['description'];
-                $stmt->bind_param("ssi", $data['status_name'], $desc, $status_id);
-                break;
+                case 'student_status':
+                    $stmt = $this->conn->prepare("UPDATE student_status SET status_name = ?, description = ? WHERE status_id = ?");
+                    $status_id = (int)($data['status_id'] ?? 0);
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $stmt->bind_param("ssi", $data['status_name'], $desc, $status_id);
+                    break;
 
-            case 'postcode':
-                $stmt = $this->conn->prepare("UPDATE postcode SET city = ?, state_name = ? WHERE zip_code = ?");
-                $zip_code = (int)($data['zip_code'] ?? 0);
-                $stmt->bind_param("ssi", $data['city'], $data['state_name'], $zip_code);
-                break;
+                case 'postcode':
+                    $stmt = $this->conn->prepare("UPDATE postcode SET city = ?, state_name = ? WHERE zip_code = ?");
+                    $zip_code = (int)($data['zip_code'] ?? 0);
+                    $stmt->bind_param("ssi", $data['city'], $data['state_name'], $zip_code);
+                    break;
 
-            case 'university':
-                $stmt = $this->conn->prepare("UPDATE university SET university_name = ?, address = ?, type_id = ?, postcode_id = ?, is_active = ? WHERE university_id = ?");
-                $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
-                $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
-                $address = empty($data['address']) ? null : $data['address'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                $university_id = (int)($data['university_id'] ?? 0);
-                
-                $stmt->bind_param("ssiiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active, $university_id);
-                break;
+                case 'university':
+                    $stmt = $this->conn->prepare("UPDATE university SET university_name = ?, address = ?, type_id = ?, postcode_id = ?, is_active = ? WHERE university_id = ?");
+                    $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
+                    $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
+                    $address = empty($data['address']) ? null : $data['address'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+                    $university_id = (int)($data['university_id'] ?? 0);
 
-            case 'student':
-                $stmt = $this->conn->prepare("UPDATE student SET fullname = ?, university_id = ?, dob = ?, email = ?, passport = ?, phone_number = ?, postcode_id = ?, address = ?, expected_graduate = ?, degree = ?, level_of_qualification_id = ?, status_id = ?, is_active = ? WHERE student_id = ?");
-                
-                $university_id = empty($data['university_id']) ? null : (int)$data['university_id'];
-                $dob = empty($data['dob']) ? null : $data['dob'];
-                $email = empty($data['email']) ? null : $data['email'];
-                $passport = empty($data['passport']) ? null : $data['passport'];
-                $phone = empty($data['phone_number']) ? null : $data['phone_number'];
-                $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
-                $address = empty($data['address']) ? null : $data['address'];
-                $grad = empty($data['expected_graduate']) ? null : $data['expected_graduate'];
-                $degree = empty($data['degree']) ? null : $data['degree'];
-                $qual_id = empty($data['level_of_qualification_id']) ? null : (int)$data['level_of_qualification_id'];
-                $status_id = empty($data['status_id']) ? 1 : (int)$data['status_id'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                $student_id = (int)($data['student_id'] ?? 0);
-                
-                $stmt->bind_param("sissssisssiiii", 
-                    $data['fullname'], $university_id, $dob, $email, $passport, 
-                    $phone, $postcode_id, $address, $grad, $degree, 
-                    $qual_id, $status_id, $is_active, $student_id
-                );
-                break;
+                    $stmt->bind_param("ssiiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active, $university_id);
+                    break;
 
-            case 'ppim':
-                $stmt = $this->conn->prepare("UPDATE ppim SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppim_id = ?");
-                $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
-                $position = empty($data['position']) ? null : $data['position'];
-                $desc = empty($data['description']) ? null : $data['description'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                $ppim_id = (int)($data['ppim_id'] ?? 0);
-                
-                $stmt->bind_param("isssii", $end_year, $data['department'], $position, $desc, $is_active, $ppim_id);
-                break;
+                case 'student':
+                    $stmt = $this->conn->prepare("UPDATE student SET fullname = ?, university_id = ?, dob = ?, email = ?, passport = ?, phone_number = ?, postcode_id = ?, address = ?, expected_graduate = ?, degree = ?, level_of_qualification_id = ?, status_id = ?, is_active = ? WHERE student_id = ?");
 
-            case 'ppi_campus':
-                $stmt = $this->conn->prepare("UPDATE ppi_campus SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
-                $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
-                $dept = empty($data['department']) ? null : $data['department'];
-                $position = empty($data['position']) ? null : $data['position'];
-                $desc = empty($data['description']) ? null : $data['description'];
-                $is_active = (int)($data['is_active'] ?? 1);
-                $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
-                
-                $stmt->bind_param("isssii", $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
-                break;
+                    $university_id = empty($data['university_id']) ? null : (int)$data['university_id'];
+                    $dob = empty($data['dob']) ? null : $data['dob'];
+                    $email = empty($data['email']) ? null : $data['email'];
+                    $passport = empty($data['passport']) ? null : $data['passport'];
+                    $phone = empty($data['phone_number']) ? null : $data['phone_number'];
+                    $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
+                    $address = empty($data['address']) ? null : $data['address'];
+                    $grad = empty($data['expected_graduate']) ? null : $data['expected_graduate'];
+                    $degree = empty($data['degree']) ? null : $data['degree'];
+                    $qual_id = empty($data['level_of_qualification_id']) ? null : (int)$data['level_of_qualification_id'];
+                    $status_id = empty($data['status_id']) ? 1 : (int)$data['status_id'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+                    $student_id = (int)($data['student_id'] ?? 0);
 
-            default:
-                throw new Exception("Update not implemented for table: " . $table);
-        }
+                    $stmt->bind_param(
+                        "sissssisssiiii",
+                        $data['fullname'],
+                        $university_id,
+                        $dob,
+                        $email,
+                        $passport,
+                        $phone,
+                        $postcode_id,
+                        $address,
+                        $grad,
+                        $degree,
+                        $qual_id,
+                        $status_id,
+                        $is_active,
+                        $student_id
+                    );
+                    break;
 
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                $this->showSuccessMessage('update', $table);
-            } else {
-                $this->showAlert('No changes were made', 'info');
+                case 'ppim':
+                    $stmt = $this->conn->prepare("UPDATE ppim SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppim_id = ?");
+                    $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
+                    $position = empty($data['position']) ? null : $data['position'];
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+                    $ppim_id = (int)($data['ppim_id'] ?? 0);
+
+                    $stmt->bind_param("isssii", $end_year, $data['department'], $position, $desc, $is_active, $ppim_id);
+                    break;
+
+                case 'ppi_campus':
+                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
+                    $dept = empty($data['department']) ? null : $data['department'];
+                    $position = empty($data['position']) ? null : $data['position'];
+                    $desc = empty($data['description']) ? null : $data['description'];
+                    $is_active = (int)($data['is_active'] ?? 1);
+                    $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
+
+                    $stmt->bind_param("isssii", $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
+                    break;
+
+                default:
+                    throw new Exception("Update not implemented for table: " . $table);
             }
-        } else {
-            throw new Exception("Failed to update record: " . $stmt->error);
+
+            if ($stmt->execute()) {
+                if ($stmt->affected_rows > 0) {
+                    $this->showSuccessMessage('update', $table);
+                } else {
+                    $this->showAlert('No changes were made', 'info');
+                }
+            } else {
+                throw new Exception("Failed to update record: " . $stmt->error);
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            // Log error
+            $this->logger->log('error', $table, 'update', "Failed to update record in $table: " . $e->getMessage(), $data);
+            throw $e;
         }
-        $stmt->close();
     }
 
     /**
      * Handle DELETE operations - COMPLETE VERSION
      */
-    private function handleDelete($table, $data) {
-        switch ($table) {
-            case 'university_type':
-                $stmt = $this->conn->prepare("DELETE FROM university_type WHERE type_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+    private function handleDelete($table, $data)
+    {
+        try {
+            // Log the attempt
+            $this->logger->log('info', $table, 'delete', "Attempting to delete record in $table", $data);
 
-            case 'qualification_level':
-                $stmt = $this->conn->prepare("DELETE FROM qualification_level WHERE level_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+            switch ($table) {
+                case 'university_type':
+                    $stmt = $this->conn->prepare("DELETE FROM university_type WHERE type_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'student_status':
-                $stmt = $this->conn->prepare("DELETE FROM student_status WHERE status_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'qualification_level':
+                    $stmt = $this->conn->prepare("DELETE FROM qualification_level WHERE level_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'postcode':
-                $stmt = $this->conn->prepare("DELETE FROM postcode WHERE zip_code = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'student_status':
+                    $stmt = $this->conn->prepare("DELETE FROM student_status WHERE status_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'university':
-                $stmt = $this->conn->prepare("DELETE FROM university WHERE university_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'postcode':
+                    $stmt = $this->conn->prepare("DELETE FROM postcode WHERE zip_code = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'student':
-                $stmt = $this->conn->prepare("DELETE FROM student WHERE student_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'university':
+                    $stmt = $this->conn->prepare("DELETE FROM university WHERE university_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'ppim':
-                $stmt = $this->conn->prepare("DELETE FROM ppim WHERE ppim_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'student':
+                    $stmt = $this->conn->prepare("DELETE FROM student WHERE student_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            case 'ppi_campus':
-                $stmt = $this->conn->prepare("DELETE FROM ppi_campus WHERE ppi_campus_id = ?");
-                $id = (int)($data['id'] ?? 0);
-                $stmt->bind_param("i", $id);
-                break;
+                case 'ppim':
+                    $stmt = $this->conn->prepare("DELETE FROM ppim WHERE ppim_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-            default:
-                throw new Exception("Delete not implemented for table: " . $table);
-        }
+                case 'ppi_campus':
+                    $stmt = $this->conn->prepare("DELETE FROM ppi_campus WHERE ppi_campus_id = ?");
+                    $id = (int)($data['id'] ?? 0);
+                    $stmt->bind_param("i", $id);
+                    break;
 
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                $this->showSuccessMessage('delete', $table);
-            } else {
-                $this->showAlert('Record not found or already deleted', 'warning');
+                default:
+                    throw new Exception("Delete not implemented for table: " . $table);
             }
-        } else {
-            throw new Exception("Failed to delete record: " . $stmt->error);
+
+            if ($stmt->execute()) {
+                if ($stmt->affected_rows > 0) {
+                    // Log success
+                    $this->logger->log('success', $table, 'delete', "Successfully deleted record from $table", $data);
+                    $this->showSuccessMessage('delete', $table);
+                } else {
+                    $this->showAlert('Record not found or already deleted', 'warning');
+                }
+            } else {
+                throw new Exception("Failed to delete record: " . $stmt->error);
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            // Log error
+            $this->logger->log('error', $table, 'delete', "Failed to delete record from $table: " . $e->getMessage(), $data);
+            throw $e;
         }
-        $stmt->close();
     }
 
     /**
      * Get all data from a table
      */
-    public function getTableData($table) {
+    public function getTableData($table)
+    {
         if (!$this->validateTableName($table)) {
             throw new Exception("Invalid table name: " . $table);
         }
 
         $query = "SELECT * FROM `$table`";
-        
+
         // Add ORDER BY for specific tables
         switch ($table) {
             case 'qualification_level':
@@ -472,7 +812,7 @@ class StudentDatabase extends ppim {
         }
 
         $result = $this->conn->query($query);
-        
+
         if (!$result) {
             throw new Exception("Query failed: " . $this->conn->error);
         }
@@ -483,7 +823,8 @@ class StudentDatabase extends ppim {
     /**
      * Get dropdown options for select fields
      */
-    public function getDropdownOptions($table, $valueField, $textField, $additionalField = null) {
+    public function getDropdownOptions($table, $valueField, $textField, $additionalField = null)
+    {
         if (!$this->validateTableName($table)) {
             return [];
         }
@@ -494,7 +835,7 @@ class StudentDatabase extends ppim {
         }
 
         $query = "SELECT $fields FROM `$table`";
-        
+
         // Add ordering
         switch ($table) {
             case 'qualification_level':
@@ -509,7 +850,7 @@ class StudentDatabase extends ppim {
         }
 
         $result = $this->conn->query($query);
-        
+
         if (!$result) {
             return [];
         }
@@ -520,7 +861,8 @@ class StudentDatabase extends ppim {
     /**
      * Get data with joins for complex tables
      */
-    public function getTableDataWithJoins($table) {
+    public function getTableDataWithJoins($table)
+    {
         switch ($table) {
             case 'university':
                 $query = "SELECT u.*, ut.type_name, p.zip_code, p.city 
@@ -571,7 +913,8 @@ class StudentDatabase extends ppim {
     /**
      * Get user permissions info for frontend
      */
-    public function getUserInfo() {
+    public function getUserInfo()
+    {
         $userTypes = [
             1 => 'Department Staff',
             2 => 'Communications',
@@ -589,8 +932,31 @@ class StudentDatabase extends ppim {
             'has_access' => $this->hasAccess()
         ];
     }
+
+    /**
+     * Get logs for display
+     */
+    public function getSystemLogs($limit = 50, $filters = [])
+    {
+        return $this->logger->getLogs($limit, $filters);
+    }
+
+    /**
+     * Get log statistics
+     */
+    public function getLogStatistics()
+    {
+        return $this->logger->getLogStats();
+    }
+
+    /**
+     * Clear old logs
+     */
+    public function clearOldLogs($days = 30)
+    {
+        return $this->logger->clearOldLogs($days);
+    }
 }
 
 // Initialize the student database class
 $studentDB = new StudentDatabase();
-?>
