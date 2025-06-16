@@ -7,7 +7,7 @@ $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
 $credit_footer = '
     <a href="https://github.com/Zentoboo" target="_blank">
         Christopher Bertrand
-    </a>
+    </a>and
     <a href="https://rafidaffa.com" target="_blank">
         Rafi Daffa
     </a>
@@ -79,11 +79,11 @@ $credit_footer = '
                             </div>
                             <div class="card-body">
                                 <div class="table-navigation d-flex flex-wrap gap-2">
-                                    <a href="#university_type" class="btn btn-outline-secondary btn-sm">University
+                                    <a href="#university_type" class="btn btn-secondary btn-sm">University
                                         Types</a>
-                                    <a href="#qualification_level"
-                                        class="btn btn-outline-secondary btn-sm">Qualification Levels</a>
-                                    <a href="#student_status" class="btn btn-outline-secondary btn-sm">Student
+                                    <a href="#qualification_level" class="btn btn-secondary btn-sm">Qualification
+                                        Levels</a>
+                                    <a href="#student_status" class="btn btn-secondary btn-sm">Student
                                         Status</a>
                                 </div>
                             </div>

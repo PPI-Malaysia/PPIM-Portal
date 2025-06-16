@@ -7,7 +7,7 @@ $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
 $credit_footer = '
     <a href="https://github.com/Zentoboo" target="_blank">
         Christopher Bertrand
-    </a>
+    </a>and
     <a href="https://rafidaffa.com" target="_blank">
         Rafi Daffa
     </a>
