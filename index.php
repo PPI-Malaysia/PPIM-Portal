@@ -1,13 +1,15 @@
 <?php
 // load main functions
-require_once("assets/php/main.php");
-$main = new ppim();
-
+require_once("assets/php/calendar.php");
+$main = new Calendar();
 // Credit: fill your name as the person who created this page here
 $credit = "Rafi Daffa Ramadhani";
 $credit_footer = '
 <a href="https://www.linkedin.com/in/rafi-daffa/" target="_blank">Rafi Daffa</a>
 ';
+
+// Get the upcoming events
+$upcomingEvents = $main->getUpcomingEventsForDisplay(10);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -223,99 +225,45 @@ $credit_footer = '
                                 <h4 class="header-title px-3 mb-2 mt-3">Upcoming Activity</h4>
                                 <div class="my-3 px-3" data-simplebar style="max-height: 400px;">
                                     <div class="timeline-alt py-0">
-                                        <div class="timeline-item">
-                                            <i class="ti ti-calendar-stats bg-info-subtle text-info timeline-icon"></i>
-                                            <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Ngariung</a>
-                                                <span class="mb-1">Kelembagaan - 7-8 June 2025</span>
-                                                <p class="mb-0 pb-3">
-                                                    <small class="text-muted">in 30 Days</small>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="timeline-item">
-                                            <i class="ti ti-calendar-stats bg-info-subtle text-info timeline-icon"></i>
-                                            <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Instellar</a>
-                                                <span class="mb-1">Segaya - xx xx 2025
-                                                </span>
-                                                <p class="mb-0 pb-3">
-                                                    <small class="text-muted">in X days</small>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="timeline-item">
-                                            <i class="ti ti-calendar-stats bg-info-subtle text-info timeline-icon"></i>
-                                            <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Robert Delaney</a>
-                                                <span class="mb-1">Kominfo - xx xx 2025
-                                                </span>
-                                                <p class="mb-0 pb-3">
-                                                    <small class="text-muted">in X days</small>
-                                                </p>
-                                            </div>
-                                        </div>
-
+                                        <?php if (!empty($upcomingEvents)): ?>
+                                        <?php foreach ($upcomingEvents as $event): ?>
                                         <div class="timeline-item">
                                             <i
-                                                class="ti ti-calendar-stats bg-warning-subtle text-warning timeline-icon"></i>
+                                                class="ti ti-calendar-stats <?php echo $event['is_ongoing'] ? 'bg-success-subtle text-success' : 'bg-info-subtle text-info'; ?> timeline-icon"></i>
                                             <div class="timeline-item-info">
                                                 <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Deadline X</a>
-                                                <span class="mb-1">Pusdatin - xx xx 2025
+                                                    class="link-reset fw-semibold mb-1 d-block">
+                                                    <?php echo htmlspecialchars($event['title']); ?>
+                                                </a>
+                                                <span class="mb-1">
+                                                    <?php if (!empty($event['creator_name'])): ?>
+                                                    <?php echo htmlspecialchars($event['creator_name']); ?> -
+                                                    <?php endif; ?>
+                                                    <?php echo $event['formatted_date']; ?>
                                                 </span>
                                                 <p class="mb-0 pb-3">
-                                                    <small class="text-muted">in X days</small>
+                                                    <small
+                                                        class="text-muted <?php echo $event['is_ongoing'] ? 'text-success fw-medium' : ''; ?>">
+                                                        <?php echo $event['time_until']; ?>
+                                                    </small>
                                                 </p>
                                             </div>
                                         </div>
-
+                                        <?php endforeach; ?>
+                                        <?php else: ?>
                                         <div class="timeline-item">
-                                            <i class="ti ti-basket bg-info-subtle text-info timeline-icon"></i>
+                                            <i
+                                                class="ti ti-calendar-off bg-secondary-subtle text-secondary timeline-icon"></i>
                                             <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">You sold an item</a>
-                                                <span class="mb-1">Paul Burgess just purchased “My - Admin
-                                                    Dashboard”!</span>
+                                                <span class="fw-semibold mb-1 d-block text-muted">No upcoming
+                                                    events</span>
                                                 <p class="mb-0 pb-3">
-                                                    <small class="text-muted">16 hours ago</small>
+                                                    <small class="text-muted">Check back later for new
+                                                        activities</small>
                                                 </p>
                                             </div>
                                         </div>
-
-                                        <div class="timeline-item">
-                                            <i class="ti ti-rocket bg-primary-subtle text-primary timeline-icon"></i>
-                                            <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Product on the Bootstrap
-                                                    Market</a>
-                                                <span class="mb-1">Reviewer added
-                                                    <span class="fw-medium">Admin Dashboard</span>
-                                                </span>
-                                                <p class="mb-0 pb-3">
-                                                    <small class="text-muted">22 hours ago</small>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="timeline-item">
-                                            <i class="ti ti-message bg-info-subtle text-info timeline-icon"></i>
-                                            <div class="timeline-item-info">
-                                                <a href="javascript:void(0);"
-                                                    class="link-reset fw-semibold mb-1 d-block">Robert Delaney</a>
-                                                <span class="mb-1">Send you message
-                                                    <span class="fw-medium">"Are you there?"</span>
-                                                </span>
-                                                <p class="mb-0 pb-2">
-                                                    <small class="text-muted">2 days ago</small>
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                     <!-- end timeline -->
                                 </div> <!-- end slimscroll -->
