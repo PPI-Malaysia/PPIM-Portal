@@ -52,22 +52,51 @@
                 </a>
             </li>
 -->
-            <li class="side-nav-title mt-2">Admin Setting</li>
-
-            <?php if ($main->isUserType(6)){ ?>
-            <li class="side-nav-item">
-                <a href="user.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-user-filled"></i></span>
-                    <span class="menu-text"> User </span>
-                </a>
-            </li>
-            <?php } ?>
-            <!-- in progress -->
+            <li class="side-nav-title mt-2">University Database</li>
             <?php if ($main->isUserType(6)){ ?>
             <li class="side-nav-item">
                 <a href="student-database.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> Pendataan Mahasiswa </span>
+                    <span class="menu-text"> Students </span>
+                </a>
+            </li>
+            <li class="side-nav-item">
+                <a href="ppim-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> PPIM Members </span>
+                </a>
+            </li>
+            <li class="side-nav-item">
+                <a href="ppi-campus-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> PPI Campus Member </span>
+                </a>
+            </li>
+            <li class="side-nav-item">
+                <a href="university-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> Universities </span>
+                </a>
+            </li>
+            <li class="side-nav-item">
+                <a href="postcode-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> Postcodes </span>
+                </a>
+            </li>
+            <li class="side-nav-item">
+                <a href="other-university-database.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-database"></i></span>
+                    <span class="menu-text"> others </span>
+                </a>
+            </li>
+            <?php } ?>
+            <li class="side-nav-title mt-2">Admin Setting</li>
+            <?php if ($main->isUserTypeRange(5, 100)){ ?>
+            <li class="side-nav-item">
+                <a href="user.php" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-user-filled"></i></span>
+                    <span class="menu-text"> User </span>
                 </a>
             </li>
             <?php } ?>

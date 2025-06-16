@@ -89,6 +89,15 @@ class ppim {
     }
     
     /**
+     * Check user type if more than >$type1 and less than $type2
+     * @param int $type1, $type2
+     * @return boolean
+     */
+    public function isUserTypeRange($type1, $type2) {
+        return $this->user_type >= $type1 && $this->user_type < $type2;
+    }
+
+    /**
      * Render the header part of the page
      */
     public function renderNavbar() {
