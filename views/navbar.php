@@ -52,7 +52,7 @@
                 </a>
             </li>
 -->
-            <?php if ($main->isUserTypeRange(5, 1000)){ ?>
+            <?php if ($main->hasPermission("student_db_view")){ ?>
             <li class="side-nav-item">
                 <a data-bs-toggle="collapse" href="#studentdatabasesidebar" aria-expanded="false"
                     aria-controls="sidebarPages" class="side-nav-link">

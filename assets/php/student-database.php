@@ -48,10 +48,12 @@ class StudentDatabase extends ppim {
      * Check if user has access to student database
      * @return boolean
      */
+    //delete later
     private function hasAccess() {
         $userType = $this->getUserType();
         return ($userType >= 5 && $userType <= 999);
     }
+    
 
     /**
      * Handle incoming POST requests for CRUD operations
