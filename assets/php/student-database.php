@@ -50,7 +50,7 @@ class StudentDatabase extends ppim {
      */
     private function hasAccess() {
         $userType = $this->getUserType();
-        return ($userType >= 5 && $userType < 100);
+        return ($userType >= 5 && $userType <= 999);
     }
 
     /**

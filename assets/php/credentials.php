@@ -58,51 +58,6 @@ class Credentials extends ppim {
     }
     
     /**
-     * Add a new user to the system
-     * @param string $username
-     * @param string $password
-     * @param int $userType
-     * @return array Result of add user attempt with success status and message
-     */
-    public function addUser($username, $password, $userType) {
-        $result = ['success' => false, 'message' => ''];
-        
-        // Check if user has permission to add users (super admin)
-        if (!$this->isUserType(6)) {
-            $result['message'] = 'Unauthorized access';
-            return $result;
-        }
-        
-        $username = trim($username);
-        
-        // Validate input
-        if (empty($username) || empty($password) || empty($userType)) {
-            $result['message'] = 'All fields are required';
-            return $result;
-        }
-        
-        // Generate a random salt
-        $salt = bin2hex(random_bytes(16)); // 32 character salt
-        
-        // Hash the password with the salt
-        $hashedPassword = hash('sha256', $password . $salt);
-        
-        // Prepare and execute query using mysqli
-        $stmt = $this->conn->prepare("INSERT INTO user (name, password, salt, type) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("sssi", $username, $hashedPassword, $salt, $userType);
-        
-        if ($stmt->execute()) {
-            $result['success'] = true;
-            $result['message'] = 'User created successfully';
-        } else {
-            $result['message'] = 'Error creating user: ' . $this->conn->error;
-        }
-        
-        $stmt->close();
-        return $result;
-    }
-    
-    /**
      * Change user password
      * @param string $currentPassword
      * @param string $newPassword

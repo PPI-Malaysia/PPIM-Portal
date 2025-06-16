@@ -48,6 +48,65 @@ class ppim {
     }
 
     /**
+     * Check if current user has a specific permission
+     * @param string $permission
+     * @return boolean
+     */
+    public function hasPermission($permission) {
+        // Super admin (type 999) has all permissions
+        if ($this->user_type == 999) return true;
+        
+        $query = "
+            SELECT COUNT(*) as count
+            FROM permissions p
+            JOIN user_type_permissions utp ON p.id = utp.permission_id
+            WHERE utp.user_type_id = ? AND p.name = ?
+        ";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("is", $this->user_type, $permission);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        
+        return $result['count'] > 0;
+    }
+
+    /**
+     * Get all permissions for current user
+     * @return array
+     */
+    public function getUserPermissions() {
+        // Super admin (type 999) has all permissions
+        if ($this->user_type == 999) {
+            $query = "SELECT name FROM permissions";
+            $result = $this->conn->query($query);
+            $permissions = [];
+            while ($row = $result->fetch_assoc()) {
+                $permissions[] = $row['name'];
+            }
+            return $permissions;
+        }
+        
+        $query = "
+            SELECT p.name 
+            FROM permissions p
+            JOIN user_type_permissions utp ON p.id = utp.permission_id
+            WHERE utp.user_type_id = ?
+        ";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $this->user_type);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $permissions = [];
+        while ($row = $result->fetch_assoc()) {
+            $permissions[] = $row['name'];
+        }
+        return $permissions;
+    }
+
+    /**
      * Get username of logged in user
      * @return string|null
      */

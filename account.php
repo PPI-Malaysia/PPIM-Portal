@@ -57,8 +57,8 @@ $credit_footer = '
                         <h4 class="header-title">Change Password</h4>
                     </div>
                     <div class="card-body">
-                        <form action="assets/php/page/account.php" method="POST" id="change-password-form">
-                            <input type="hidden" name="action" value="change_password">
+                        <form action="assets/php/page/edit_account.php" method="POST" id="change-password-form">
+                            <input type="hidden" name="todo" value="change_password">
 
                             <div class="mb-3">
                                 <label for="current_password" class="form-label">Current Password</label>

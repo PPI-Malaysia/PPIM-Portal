@@ -52,15 +52,15 @@
                 </a>
             </li>
 -->
-            <?php if ($main->isUserType(6)){ ?>
+            <?php if ($main->isUserTypeRange(5, 1000)){ ?>
             <li class="side-nav-item">
-                <a data-bs-toggle="collapse" href="#sidebarPages" aria-expanded="false" aria-controls="sidebarPages"
-                    class="side-nav-link">
+                <a data-bs-toggle="collapse" href="#studentdatabasesidebar" aria-expanded="false"
+                    aria-controls="sidebarPages" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-database"></i></span>
                     <span class="menu-text"> Student Database </span>
                     <span class="menu-arrow"></span>
                 </a>
-                <div class="collapse" id="sidebarPages">
+                <div class="collapse" id="studentdatabasesidebar">
                     <ul class="sub-menu">
                         <li class="side-nav-item">
                             <a href="student-database.php" class="side-nav-link">
@@ -96,13 +96,29 @@
                 </div>
             </li>
             <?php } ?>
-            <li class="side-nav-title mt-2">Admin Setting</li>
-            <?php if ($main->isUserTypeRange(5, 100)){ ?>
+            <?php if ($main->isUserType(999)){ ?>
+            <li class="side-nav-title mt-2">Super Admin Setting</li>
             <li class="side-nav-item">
-                <a href="user.php" class="side-nav-link">
+                <a data-bs-toggle="collapse" href="#userlist" aria-expanded="false" aria-controls="sidebarPages"
+                    class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-user-filled"></i></span>
                     <span class="menu-text"> User </span>
+                    <span class="menu-arrow"></span>
                 </a>
+                <div class="collapse" id="userlist">
+                    <ul class="sub-menu">
+                        <li class="side-nav-item">
+                            <a href="user.php" class="side-nav-link">
+                                <span class="menu-text">User List</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="user-type.php" class="side-nav-link">
+                                <span class="menu-text">User Type</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
             <?php } ?>
 
