@@ -52,43 +52,48 @@
                 </a>
             </li>
 -->
-            <li class="side-nav-title mt-2">University Database</li>
             <?php if ($main->isUserType(6)){ ?>
             <li class="side-nav-item">
-                <a href="student-database.php" class="side-nav-link">
+                <a data-bs-toggle="collapse" href="#sidebarPages" aria-expanded="false" aria-controls="sidebarPages"
+                    class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> Students </span>
+                    <span class="menu-text"> Student Database </span>
+                    <span class="menu-arrow"></span>
                 </a>
-            </li>
-            <li class="side-nav-item">
-                <a href="ppim-database.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> PPIM Members </span>
-                </a>
-            </li>
-            <li class="side-nav-item">
-                <a href="ppi-campus-database.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> PPI Campus Member </span>
-                </a>
-            </li>
-            <li class="side-nav-item">
-                <a href="university-database.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> Universities </span>
-                </a>
-            </li>
-            <li class="side-nav-item">
-                <a href="postcode-database.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> Postcodes </span>
-                </a>
-            </li>
-            <li class="side-nav-item">
-                <a href="other-university-database.php" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-database"></i></span>
-                    <span class="menu-text"> others </span>
-                </a>
+                <div class="collapse" id="sidebarPages">
+                    <ul class="sub-menu">
+                        <li class="side-nav-item">
+                            <a href="student-database.php" class="side-nav-link">
+                                <span class="menu-text">Students</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="ppim-database.php" class="side-nav-link">
+                                <span class="menu-text">PPIM Members</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="ppi-campus-database.php" class="side-nav-link">
+                                <span class="menu-text">PPI Campus Members</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="university-database.php" class="side-nav-link">
+                                <span class="menu-text">Universities</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="postcode-database.php" class="side-nav-link">
+                                <span class="menu-text">Postcodes</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="other-Student-database.php" class="side-nav-link">
+                                <span class="menu-text">Others</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
             <?php } ?>
             <li class="side-nav-title mt-2">Admin Setting</li>

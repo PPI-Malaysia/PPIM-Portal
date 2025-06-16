@@ -3,10 +3,13 @@
 require_once("assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
-$credit = "Christopher Bertrand";
+$credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
 $credit_footer = '
     <a href="https://github.com/Zentoboo" target="_blank">
         Christopher Bertrand
+    </a>
+    <a href="https://rafidaffa.com" target="_blank">
+        Rafi Daffa
     </a>
 ';
 ?>
@@ -61,7 +64,7 @@ $credit_footer = '
                     <div class="text-end">
                         <ol class="breadcrumb m-0 py-0">
                             <li class="breadcrumb-item"><a href="javascript: void(0);">Dashboard</a></li>
-                            <li class="breadcrumb-item"><a href="javascript: void(0);">University Database</a></li>
+                            <li class="breadcrumb-item"><a href="javascript: void(0);">Student Database</a></li>
                             <li class="breadcrumb-item active">PPIM Members</li>
                         </ol>
                     </div>
@@ -123,7 +126,7 @@ $credit_footer = '
                                                 <textarea name="description" class="form-control" rows="3"></textarea>
                                             </div>
                                             <div class="col-12">
-                                                <button type="submit" class="btn btn-success">Add PPIM Member</button>
+                                                <button type="submit" class="btn btn-secondary">Add PPIM Member</button>
                                             </div>
                                         </form>
                                     </div>
