@@ -88,7 +88,7 @@
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="other-Student-database.php" class="side-nav-link">
+                            <a href="other-student-database.php" class="side-nav-link">
                                 <span class="menu-text">Others</span>
                             </a>
                         </li>
