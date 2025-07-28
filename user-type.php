@@ -161,12 +161,18 @@ $credit_footer = '
                                             foreach ($userTypes as $userType) {
                                                 $permissions = $main->getUserTypePermissions($userType['id']);
                                                 $permissionCount = count($permissions);
-                                                
+                                                $isCampus = $userType['id'] == 1000;
                                                 echo '
                                                 <tr>
                                                     <td><span class="badge bg-primary">' . $userType['id'] . '</span></td>
                                                     <td>' . htmlspecialchars($userType['name']) . '</td>
                                                     <td>' . htmlspecialchars($userType['description']) . '</td>
+                                                ';
+                                                echo $isCampus?  '
+                                                    <td> - </td>
+                                                    <td> - </td>
+                                                </tr>
+                                                ' :  '
                                                     <td>' . $permissionCount . ' permissions</td>
                                                     <td>
                                                         <button class="btn btn-sm btn-outline-primary me-1" 

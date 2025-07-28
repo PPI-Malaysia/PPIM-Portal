@@ -245,7 +245,7 @@ $credit_footer = '
                                                     $edit = '<button class="btn btn-sm btn-outline-primary me-1" onclick="editUser(' . $user['id'] . ')">
                                                                 <i class="ti ti-edit"></i> Edit
                                                             </button>';
-                                                    $delete = '<button class="btn btn-sm btn-outline-danger" onclick="deleteUser(' . $user['id'] . ', \'' . htmlspecialchars($user['name'], ENT_QUOTES) . '\')">
+                                                    $delete = '<button class="btn btn-sm btn-outline-danger" onclick="deleteUser(' . $user['id'] . ', \'' . htmlspecialchars($user['name'], ENT_QUOTES) . '\', ' . $user['type'] . ')">
                                                                 <i class="ti ti-trash"></i> Delete
                                                             </button>';
                                                     $typeName = $user['type_name'] ? htmlspecialchars($user['type_name']) : 'Type ' . $user['type'];
@@ -379,7 +379,14 @@ $credit_footer = '
                 if (data.success) {
                     document.getElementById('edit-user-id').value = userId;
                     document.getElementById('edit-username').value = data.user.name;
-                    document.getElementById('edit-user-type').value = data.user.type;
+
+                    const userTypeSelect = document.getElementById('edit-user-type');
+                    userTypeSelect.disabled = false;
+                    if (data.user.type == 1000) {
+                        //make the edit-user-type disabled
+                        userTypeSelect.disabled = true;
+                    }
+                    userTypeSelect.value = data.user.type;
                     document.getElementById('reset-password').checked = false;
                     document.getElementById('edit-result-container').style.display = 'none';
 
@@ -402,6 +409,12 @@ $credit_footer = '
         const formData = new FormData(this);
         const resetPassword = document.getElementById('reset-password').checked;
 
+        // If usertype select is disabled, manually add its value to FormData
+        const usertypeSelect = document.getElementById('edit-user-type');
+        if (usertypeSelect.disabled) {
+            formData.append('usertype', usertypeSelect.value);
+        }
+
         // Generate new password if reset is checked
         let newPassword = null;
         if (resetPassword) {
@@ -415,11 +428,10 @@ $credit_footer = '
                 }
 
                 for (let i = 0; i < 2; i++) {
-                    const specialChar = specialChars.charAt(Math.floor(Math.random() *
-                        specialChars.length));
+                    const specialChar = specialChars.charAt(Math.floor(Math.random() * specialChars
+                        .length));
                     const position = Math.floor(Math.random() * (password.length + 1));
-                    password = password.slice(0, position) + specialChar + password.slice(
-                        position);
+                    password = password.slice(0, position) + specialChar + password.slice(position);
                 }
 
                 return password;
@@ -430,7 +442,7 @@ $credit_footer = '
         }
 
         const username = formData.get('username');
-        const usertypeText = document.getElementById('edit-user-type').selectedOptions[0].text;
+        const usertypeText = usertypeSelect.selectedOptions[0]?.text || 'N/A';
 
         fetch('assets/php/page/edit_user.php', {
                 method: 'POST',
@@ -444,8 +456,7 @@ $credit_footer = '
                     document.getElementById('edit-result-usertype').textContent = usertypeText;
 
                     if (resetPassword && newPassword) {
-                        document.getElementById('edit-result-password').textContent =
-                            newPassword;
+                        document.getElementById('edit-result-password').textContent = newPassword;
                         document.getElementById('new-password-section').style.display = 'block';
                     } else {
                         document.getElementById('new-password-section').style.display = 'none';
@@ -467,31 +478,60 @@ $credit_footer = '
             });
     });
 
+
     // Delete user function
-    function deleteUser(userId, username) {
-        if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-            fetch('assets/php/page/delete_user.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        user_id: userId
+    function deleteUser(userId, username, usertype) {
+        if (usertype != 1000) {
+            if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+                fetch('assets/php/page/delete_user.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_id: userId
+                        })
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('User deleted successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + (data.message || 'Failed to delete user'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Network error while deleting user');
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('User deleted successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (data.message || 'Failed to delete user'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Network error while deleting user');
+                    });
+            }
+        } else {
+            if (confirm(
+                    `Are you sure you want to delete PPI Campus user: "${username}"? This action cannot be undone.`)) {
+                fetch('assets/php/page/delete_ppi_user.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_id: userId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('User deleted successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (data.message || 'Failed to delete user'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Network error while deleting user');
+                    });
+            }
         }
     }
     </script>

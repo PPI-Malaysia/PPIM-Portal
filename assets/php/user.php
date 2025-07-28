@@ -199,6 +199,11 @@ class User extends ppim {
         if ($userTypeId == 999) {
             return false;
         }
+
+        // don't allow editing ppi_campus data
+        if ($userTypeId == 1000) {
+            return false;
+        }
         
         $this->conn->begin_transaction();
         
@@ -240,6 +245,11 @@ class User extends ppim {
         if ($userTypeId == 999) {
             return false;
         }
+
+        // don't allow deleting ppi_campus data
+        if ($userTypeId == 1000) {
+            return false;
+        }
         
         // Check if any users are using this type
         $checkSql = "SELECT COUNT(*) as count FROM user WHERE type = ?";
@@ -275,6 +285,32 @@ class User extends ppim {
             $this->conn->rollback();
             return false;
         }
+    }
+
+    /**
+     * Connect user id from username with ppi_campus id
+     * @param String $name
+     * @param string $university_id
+     * @return boolean
+     */
+    public function connectUniUser($name, $university_id) {
+        $this->validateSuperAdmin();
+        // get the user ID by username
+        $userID = $this->getIdByUser($name);
+        if ($userID) {
+            // connect the user id with ppi_campus id
+            $sql = "INSERT INTO university_user (user_id, university_id) VALUES (?, ?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ii", $userID, $university_id);
+            $result = $stmt->execute();
+            if ($result) {
+                // Reload users after adding
+                $this->loadUsers();
+            }
+            
+            return $result;
+        }
+        return false;
     }
     
     /**
@@ -388,6 +424,52 @@ class User extends ppim {
     }
     
     /**
+     * Get a specific user ID by user name
+     * @param string $name
+     * @return int|false
+     */
+    public function getIdByUser($user) {
+        $this->validateSuperAdmin();
+        $sql = "SELECT id, name FROM user
+                WHERE name = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $user);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if($result && $result->num_rows > 0){
+            return $result->fetch_assoc()['id'];
+        }
+        return false;
+    }
+    
+    /**
+     * Get users by university ID
+     *
+     * @param int $university_id
+     * @return array|false
+     */
+    public function getUniUserByUniId($university_id) {
+        $this->validateSuperAdmin();
+
+        $sql = "SELECT u.id, u.name 
+                FROM user u
+                JOIN university_user uu ON uu.user_id = u.id
+                WHERE uu.university_id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $university_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $result->num_rows > 0) {
+            return $result->fetch_all();
+        }
+
+        return false;
+    }
+
+
+    /**
      * Delete a user
      * @param int $id
      * @return boolean
@@ -407,4 +489,41 @@ class User extends ppim {
         
         return $result;
     }
+
+    /**
+     * Delete a PPI user
+     * @param int $id
+     * @return boolean
+     */
+    public function deletePPIUser($id) {
+        $this->validateSuperAdmin();
+
+        // Begin transaction
+        $this->conn->begin_transaction();
+
+        try {
+            // Delete from university_user first
+            $sql = "DELETE FROM university_user WHERE user_id = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id);
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to delete from university_user");
+            }
+
+            // delete from user
+            $sql = "DELETE FROM user WHERE id = ?";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("i", $id);
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to delete from user");
+            }
+
+            $this->conn->commit();
+            $this->loadUsers();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            return false;
+        }
+    } 
 }

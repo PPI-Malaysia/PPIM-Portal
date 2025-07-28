@@ -22,7 +22,7 @@ class ppim {
             define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
         }
         
-        require_once(ROOT_PATH . "assets/php/conf.php");
+        require(ROOT_PATH . "assets/php/conf.php");
         $this->conn = $conn; // Store connection as property
         
         //check if user already logged in

@@ -12,6 +12,16 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+
+// Pagination and search parameters
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 10;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Get paginated data and total count
+$data = $studentDB->getPaginatedTableDataWithJoins('postcode', $page, $limit, $search);
+$totalRecords = $studentDB->getTotalCount('postcode', $search);
+$totalPages = ceil($totalRecords / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,6 +120,33 @@ $credit_footer = '
                                     </div>
                                 </div>
 
+                                <!-- Search Form -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <form method="GET" class="d-flex">
+                                            <input type="text" name="search" class="form-control me-2"
+                                                placeholder="Search postcode..."
+                                                value="<?= htmlspecialchars($search) ?>">
+                                            <button type="submit" class="btn btn-outline-primary">
+                                                <i class="ti ti-search"></i> Search
+                                            </button>
+                                            <?php if (!empty($search)): ?>
+                                            <a href="?" class="btn btn-outline-secondary ms-2">
+                                                <i class="ti ti-x"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            Showing <?= count($data) ?> of <?= $totalRecords ?> postcode
+                                            <?php if (!empty($search)): ?>
+                                            (filtered by "<?= htmlspecialchars($search) ?>")
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                                </div>
+
                                 <!-- Data Table -->
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover mb-0">
@@ -122,18 +159,36 @@ $credit_footer = '
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php if (empty($data)): ?>
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4">
+                                                    <div class="text-muted">
+                                                        <i class="ti ti-search fs-24 mb-2"></i>
+                                                        <p class="mb-0">
+                                                            <?php if (!empty($search)): ?>
+                                                            No postcode found matching
+                                                            "<?= htmlspecialchars($search) ?>"
+                                                            <?php else: ?>
+                                                            No postcode found
+                                                            <?php endif; ?>
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php else: ?>
                                             <?php
-                                            $data = $studentDB->getTableData('postcode');
+                                            $colnum = 1;
                                             foreach ($data as $row): ?>
                                             <tr>
                                                 <td><?= htmlspecialchars($row['zip_code']) ?></td>
                                                 <td><?= htmlspecialchars($row['city']) ?></td>
                                                 <td><?= htmlspecialchars($row['state_name']) ?></td>
+
                                                 <td>
                                                     <button type="button" class="btn btn-outline-warning btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editPostcodeModal<?= $row['zip_code'] ?>">
-                                                        <i class="ti ti-edit"></i> Edit
+                                                        <i class="ti ti-edit"></i>
                                                     </button>
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="delete">
@@ -142,7 +197,7 @@ $credit_footer = '
                                                             value="<?= htmlspecialchars($row['zip_code']) ?>">
                                                         <button type="submit" class="btn btn-danger btn-sm"
                                                             onclick="return confirm('Are you sure?')">
-                                                            <i class="ti ti-trash"></i> Delete
+                                                            <i class="ti ti-trash"></i>
                                                         </button>
                                                     </form>
 
@@ -198,12 +253,94 @@ $credit_footer = '
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </td>
                                             </tr>
+                                            <?php $colnum++; ?>
                                             <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
+                                <!-- Pagination -->
+                                <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted">
+                                            Page <?= $page ?> of <?= $totalPages ?>
+                                        </small>
+                                    </div>
+                                    <nav aria-label="University pagination">
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <!-- Previous Page -->
+                                            <?php if ($page > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Page Numbers -->
+                                            <?php
+                                            $startPage = max(1, $page - 2);
+                                            $endPage = min($totalPages, $page + 2);
+                                            
+                                            if ($startPage > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">1</a>
+                                            </li>
+                                            <?php if ($startPage > 2): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+
+                                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                <a class="page-link"
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($endPage < $totalPages): ?>
+                                            <?php if ($endPage < $totalPages - 1): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $totalPages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $totalPages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Next Page -->
+                                            <?php if ($page < $totalPages): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

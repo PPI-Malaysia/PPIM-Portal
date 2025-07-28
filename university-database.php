@@ -12,6 +12,16 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+
+// Pagination and search parameters
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 10;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Get paginated data and total count
+$data = $studentDB->getPaginatedTableDataWithJoins('university', $page, $limit, $search);
+$totalRecords = $studentDB->getTotalCount('university', $search);
+$totalPages = ceil($totalRecords / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -137,6 +147,33 @@ $credit_footer = '
                                     </div>
                                 </div>
 
+                                <!-- Search Form -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <form method="GET" class="d-flex">
+                                            <input type="text" name="search" class="form-control me-2"
+                                                placeholder="Search universities..."
+                                                value="<?= htmlspecialchars($search) ?>">
+                                            <button type="submit" class="btn btn-outline-primary">
+                                                <i class="ti ti-search"></i> Search
+                                            </button>
+                                            <?php if (!empty($search)): ?>
+                                            <a href="?" class="btn btn-outline-secondary ms-2">
+                                                <i class="ti ti-x"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            Showing <?= count($data) ?> of <?= $totalRecords ?> universities
+                                            <?php if (!empty($search)): ?>
+                                            (filtered by "<?= htmlspecialchars($search) ?>")
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                                </div>
+
                                 <!-- Data Table -->
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover mb-0">
@@ -152,11 +189,28 @@ $credit_footer = '
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php if (empty($data)): ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center py-4">
+                                                    <div class="text-muted">
+                                                        <i class="ti ti-search fs-24 mb-2"></i>
+                                                        <p class="mb-0">
+                                                            <?php if (!empty($search)): ?>
+                                                            No universities found matching
+                                                            "<?= htmlspecialchars($search) ?>"
+                                                            <?php else: ?>
+                                                            No universities found
+                                                            <?php endif; ?>
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php else: ?>
                                             <?php
-                                            $data = $studentDB->getTableDataWithJoins('university');
+                                            $colnum = 1;
                                             foreach ($data as $row): ?>
                                             <tr>
-                                                <td><?= htmlspecialchars($row['university_id']) ?></td>
+                                                <td><?= $colnum ?></td>
                                                 <td><?= htmlspecialchars($row['university_name']) ?></td>
                                                 <td><?= htmlspecialchars($row['address'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['type_name'] ?? '') ?></td>
@@ -164,10 +218,15 @@ $credit_footer = '
                                                     <?= htmlspecialchars($row['city'] ?? '') ?></td>
                                                 <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
                                                 <td>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm me-1"
+                                                        data-bs-toggle="modal" data-bs-target="#ppiaccountmodal"
+                                                        data-id="<?= $row['university_id']; ?>">
+                                                        <i class="ti ti-user"></i>
+                                                    </button>
                                                     <button type="button" class="btn btn-outline-warning btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editUniversityModal<?= $row['university_id'] ?>">
-                                                        <i class="ti ti-edit"></i> Edit
+                                                        <i class="ti ti-edit"></i>
                                                     </button>
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="delete">
@@ -176,7 +235,7 @@ $credit_footer = '
                                                             value="<?= htmlspecialchars($row['university_id']) ?>">
                                                         <button type="submit" class="btn btn-danger btn-sm"
                                                             onclick="return confirm('Are you sure?')">
-                                                            <i class="ti ti-trash"></i> Delete
+                                                            <i class="ti ti-trash"></i>
                                                         </button>
                                                     </form>
 
@@ -262,21 +321,131 @@ $credit_footer = '
                                                                         </div>
                                                                     </div>
                                                                     <div class="modal-footer">
-                                                                        <button type="button" class="btn btn-secondary"
+                                                                        <button type="button" class="btn btn-primary"
                                                                             data-bs-dismiss="modal">Cancel</button>
                                                                         <button type="submit"
-                                                                            class="btn btn-primary">Update</button>
+                                                                            class="btn btn-secondary">Update</button>
                                                                     </div>
                                                                 </form>
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    <!-- user account modal -->
+                                                    <div class="modal fade" id="ppiaccountmodal" tabindex="-1"
+                                                        aria-labelledby="ppiaccountmodalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title" id="ppiaccountmodalLabel">
+                                                                        PPI Campus Account Credential
+                                                                    </h5>
+                                                                    <button type="button" class="btn-close"
+                                                                        data-bs-dismiss="modal"
+                                                                        aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body" id="modal-body-content">
+                                                                    <!-- Content will be loaded here -->
+                                                                    <div class="text-center">
+                                                                        <div class="spinner-border" role="status">
+                                                                            <span
+                                                                                class="visually-hidden">Loading...</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                             </tr>
+                                            <?php $colnum++; ?>
                                             <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <!-- Pagination -->
+                                <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted">
+                                            Page <?= $page ?> of <?= $totalPages ?>
+                                        </small>
+                                    </div>
+                                    <nav aria-label="University pagination">
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <!-- Previous Page -->
+                                            <?php if ($page > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Page Numbers -->
+                                            <?php
+                                            $startPage = max(1, $page - 2);
+                                            $endPage = min($totalPages, $page + 2);
+                                            
+                                            if ($startPage > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">1</a>
+                                            </li>
+                                            <?php if ($startPage > 2): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+
+                                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                <a class="page-link"
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($endPage < $totalPages): ?>
+                                            <?php if ($endPage < $totalPages - 1): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $totalPages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $totalPages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Next Page -->
+                                            <?php if ($page < $totalPages): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -326,6 +495,117 @@ $credit_footer = '
 
         <!-- Custom js -->
         <script src="assets/js/database-nav.js"></script>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('ppiaccountmodal');
+            const modalBody = document.getElementById('modal-body-content');
+
+            modal.addEventListener('show.bs.modal', function(event) {
+                // Button that triggered the modal
+                const button = event.relatedTarget;
+
+                // Get the data-id attribute
+                const dataId = button.getAttribute('data-id');
+
+                // Show loading spinner
+                modalBody.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+                // Build the URL with the ID parameter
+                const phpUrl = `assets/php/page/ppi_campus_account_modal.php?id=${dataId}`;
+
+                // Fetch content from PHP file
+                fetch(phpUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.text();
+                    })
+                    .then(data => {
+                        modalBody.innerHTML = data;
+
+                        // ✅ Attach submit handler after content is loaded
+                        const form = document.getElementById('addPPICampusAccForm');
+                        if (!form) return;
+
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+
+                            // Generate secure password
+                            const generatePassword = () => {
+                                const chars =
+                                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                                const specialChars = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+                                let password = '';
+
+                                for (let i = 0; i < 10; i++) {
+                                    password += chars.charAt(Math.floor(Math.random() *
+                                        chars.length));
+                                }
+
+                                for (let i = 0; i < 2; i++) {
+                                    const specialChar = specialChars.charAt(Math.floor(
+                                        Math.random() * specialChars.length));
+                                    const position = Math.floor(Math.random() * (
+                                        password.length + 1));
+                                    password = password.slice(0, position) +
+                                        specialChar + password.slice(position);
+                                }
+
+                                return password;
+                            };
+
+                            const password = generatePassword();
+                            document.getElementById('password').value = password;
+
+                            const formData = new FormData(form);
+                            const username = formData.get('username');
+                            const usertypeText = document.getElementById('user-type')
+                                .selectedOptions[0].text;
+
+                            fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        document.getElementById('result-username')
+                                            .textContent = username;
+                                        document.getElementById('result-password')
+                                            .textContent = password;
+                                        document.getElementById('result-usertype')
+                                            .textContent = usertypeText;
+                                        document.getElementById('result-container')
+                                            .style.display = 'block';
+                                    } else {
+                                        alert('Error: ' + (data.message ||
+                                            'Failed to create user'));
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('An error occurred while creating the user');
+                                });
+                        });
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        Error loading content: ${error.message}
+                    </div>
+                `;
+                    });
+            });
+        });
+        </script>
 
 </body>
 

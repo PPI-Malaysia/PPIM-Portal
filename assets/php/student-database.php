@@ -5,7 +5,7 @@
  * COMPLETE VERSION with all CRUD operations
  */
 
-require_once("assets/php/main.php");
+require_once(__DIR__."/main.php");
 
 class StudentDatabase extends ppim {
     private $allowedTables = [
@@ -48,10 +48,8 @@ class StudentDatabase extends ppim {
      * Check if user has access to student database
      * @return boolean
      */
-    //delete later
     private function hasAccess() {
-        $userType = $this->getUserType();
-        return ($userType >= 5 && $userType <= 999);
+        return $this->hasPermission("student_db_view") || $this->hasPermission("student_db_edit") || $this->hasPermission("student_db_add");
     }
     
 
@@ -568,6 +566,193 @@ class StudentDatabase extends ppim {
         }
 
         return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get paginated data with joins and search functionality
+     */
+    public function getPaginatedTableDataWithJoins($table, $page = 1, $limit = 10, $search = '') {
+        $offset = ($page - 1) * $limit;
+        
+        switch ($table) {
+            case 'university':
+                $baseQuery = "SELECT u.*, ut.type_name, p.zip_code, p.city 
+                             FROM university u 
+                             LEFT JOIN university_type ut ON u.type_id = ut.type_id 
+                             LEFT JOIN postcode p ON u.postcode_id = p.zip_code";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (u.university_name LIKE ? OR u.address LIKE ? OR ut.type_name LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+                
+                $orderClause = " ORDER BY u.university_name ASC";
+                $limitClause = " LIMIT ? OFFSET ?";
+                
+                $query = $baseQuery . $whereClause . $orderClause . $limitClause;
+                $params[] = $limit;
+                $params[] = $offset;
+                $types .= "ii";
+                
+                break;
+
+            case 'student':
+                $baseQuery = "SELECT s.*, u.university_name, p.zip_code, p.city, 
+                                    ql.level_name, ss.status_name 
+                             FROM student s 
+                             LEFT JOIN university u ON s.university_id = u.university_id 
+                             LEFT JOIN postcode p ON s.postcode_id = p.zip_code 
+                             LEFT JOIN qualification_level ql ON s.level_of_qualification_id = ql.level_id
+                             LEFT JOIN student_status ss ON s.status_id = ss.status_id";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR s.email LIKE ? OR u.university_name LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+                
+                $orderClause = " ORDER BY s.fullname ASC";
+                $limitClause = " LIMIT ? OFFSET ?";
+                
+                $query = $baseQuery . $whereClause . $orderClause . $limitClause;
+                $params[] = $limit;
+                $params[] = $offset;
+                $types .= "ii";
+                
+                break;
+            
+            case 'postcode':
+                $baseQuery = "SELECT p.* 
+                             FROM postcode p";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (p.zip_code LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam];
+                    $types = "ss";
+                }
+                
+                $orderClause = " ORDER BY p.zip_code ASC";
+                $limitClause = " LIMIT ? OFFSET ?";
+                
+                $query = $baseQuery . $whereClause . $orderClause . $limitClause;
+                $params[] = $limit;
+                $params[] = $offset;
+                $types .= "ii";
+                
+                break;
+            default:
+                throw new Exception("Pagination not implemented for table: " . $table);
+        }
+
+        $stmt = $this->conn->prepare($query);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if (!$result) {
+            throw new Exception("Query failed: " . $this->conn->error);
+        }
+
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get total count for pagination
+     */
+    public function getTotalCount($table, $search = '') {
+        switch ($table) {
+            case 'university':
+                $baseQuery = "SELECT COUNT(*) as total 
+                             FROM university u 
+                             LEFT JOIN university_type ut ON u.type_id = ut.type_id 
+                             LEFT JOIN postcode p ON u.postcode_id = p.zip_code";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (u.university_name LIKE ? OR u.address LIKE ? OR ut.type_name LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+                
+                $query = $baseQuery . $whereClause;
+                break;
+
+            case 'student':
+                $baseQuery = "SELECT COUNT(*) as total 
+                             FROM student s 
+                             LEFT JOIN university u ON s.university_id = u.university_id 
+                             LEFT JOIN postcode p ON s.postcode_id = p.zip_code 
+                             LEFT JOIN qualification_level ql ON s.level_of_qualification_id = ql.level_id
+                             LEFT JOIN student_status ss ON s.status_id = ss.status_id";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR s.email LIKE ? OR u.university_name LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+                
+                $query = $baseQuery . $whereClause;
+                break;
+
+            case 'postcode':
+                $baseQuery = "SELECT COUNT(*) as total 
+                             FROM postcode p";
+                
+                $whereClause = "";
+                $params = [];
+                $types = "";
+                
+                if (!empty($search)) {
+                    $whereClause = " WHERE (p.zip_code LIKE ? OR p.city LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam];
+                    $types = "ss";
+                }
+                
+                $query = $baseQuery . $whereClause;
+                break;
+            default:
+                throw new Exception("Count not implemented for table: " . $table);
+        }
+
+        $stmt = $this->conn->prepare($query);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        return (int)$row['total'];
     }
 
     /**

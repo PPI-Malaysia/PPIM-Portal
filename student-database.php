@@ -2,6 +2,16 @@
 // Load the new StudentDatabase class
 require_once("assets/php/student-database.php");
 
+// Pagination and search parameters
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10; // 10 entries per page
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Get paginated data
+$data = $studentDB->getPaginatedTableDataWithJoins('student', $page, $limit, $search);
+$totalRecords = $studentDB->getTotalCount('student', $search);
+$totalPages = ceil($totalRecords / $limit);
+
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
 $credit_footer = '
@@ -83,6 +93,33 @@ $credit_footer = '
                                 </button>
                             </div>
                             <div class="card-body">
+                                <!-- Search Form -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <form method="GET" class="d-flex gap-2">
+                                            <input type="text" name="search" class="form-control"
+                                                placeholder="Search students..."
+                                                value="<?= htmlspecialchars($search) ?>">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="ti ti-search"></i> Search
+                                            </button>
+                                            <?php if (!empty($search)): ?>
+                                            <a href="?" class="btn btn-outline-secondary">
+                                                <i class="ti ti-x"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            Showing <?= count($data) ?> of <?= $totalRecords ?> students
+                                            <?php if (!empty($search)): ?>
+                                            (filtered from total)
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                                </div>
+
                                 <!-- Add Form -->
                                 <div class="collapse mb-3" id="addStudent">
                                     <div class="card card-body">
@@ -196,8 +233,24 @@ $credit_footer = '
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php if (empty($data)): ?>
+                                            <tr>
+                                                <td colspan="8" class="text-center py-4">
+                                                    <div class="text-muted">
+                                                        <i class="ti ti-search fs-24 mb-2"></i>
+                                                        <p class="mb-0">
+                                                            <?php if (!empty($search)): ?>
+                                                            No students found matching
+                                                            "<?= htmlspecialchars($search) ?>"
+                                                            <?php else: ?>
+                                                            No students found
+                                                            <?php endif; ?>
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php else: ?>
                                             <?php
-                                            $data = $studentDB->getTableDataWithJoins('student');
                                             foreach ($data as $row): ?>
                                             <tr>
                                                 <td><?= htmlspecialchars($row['student_id']) ?></td>
@@ -348,9 +401,55 @@ $credit_footer = '
                                                 </td>
                                             </tr>
                                             <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <!-- Pagination Controls -->
+                                <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted">
+                                            Page <?= $page ?> of <?= $totalPages ?>
+                                        </small>
+                                    </div>
+                                    <nav aria-label="Page navigation">
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <?php if ($page > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </a>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <?php
+                                            $start = max(1, $page - 2);
+                                            $end = min($totalPages, $page + 2);
+                                            
+                                            for ($i = $start; $i <= $end; $i++): ?>
+                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                <a class="page-link"
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    <?= $i ?>
+                                                </a>
+                                            </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($page < $totalPages): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
