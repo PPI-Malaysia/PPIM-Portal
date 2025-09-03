@@ -1,6 +1,6 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
@@ -23,22 +23,22 @@ $credit_footer = '
     <meta content="<?php echo htmlspecialchars($credit); ?>" name="author" />
 
     <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="shortcut icon" href="../assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -147,7 +147,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['type_name']) ?></td>
                                                 <td><?= htmlspecialchars($row['description'] ?? '') ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editUniversityTypeModal<?= $row['type_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -157,7 +158,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="university_type">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['type_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -281,7 +283,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['level_order']) ?></td>
                                                 <td><?= htmlspecialchars($row['description'] ?? '') ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editQualificationModal<?= $row['level_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -291,7 +294,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="qualification_level">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['level_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -417,7 +421,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['status_name']) ?></td>
                                                 <td><?= htmlspecialchars($row['description'] ?? '') ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editStatusModal<?= $row['status_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -427,7 +432,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="student_status">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['status_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -520,10 +526,10 @@ $credit_footer = '
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -531,7 +537,7 @@ $credit_footer = '
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
 </body>
 

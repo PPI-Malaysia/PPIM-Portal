@@ -1,6 +1,6 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
@@ -12,6 +12,20 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+// Pagination, search, sorting, and page size
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$allowedLimits = [10, 100, 500];
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+if (!in_array($limit, $allowedLimits, true)) { $limit = 10; }
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : null; // id, fullname, start_year, end_year, department, position
+$dir = isset($_GET['dir']) ? strtolower($_GET['dir']) : 'asc';
+$dir = $dir === 'desc' ? 'desc' : 'asc';
+
+// Get paginated data and total count
+$data = $studentDB->getPaginatedTableDataWithJoins('ppim', $page, $limit, $search, $sort, $dir);
+$totalRecords = $studentDB->getTotalCount('ppim', $search);
+$totalPages = ceil($totalRecords / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -23,22 +37,22 @@ $credit_footer = '
     <meta content="<?php echo htmlspecialchars($credit); ?>" name="author" />
 
     <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="shortcut icon" href="../assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -132,27 +146,119 @@ $credit_footer = '
                                     </div>
                                 </div>
 
+                                <!-- Search Form -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <form method="GET" class="d-flex gap-2">
+                                            <?php if (!empty($sort)): ?>
+                                            <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                            <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                                            <?php endif; ?>
+                                            <input type="hidden" name="limit" value="<?= htmlspecialchars($limit) ?>">
+                                            <input type="text" name="search" class="form-control"
+                                                placeholder="Search members (name, department, position)..."
+                                                value="<?= htmlspecialchars($search) ?>">
+                                            <button type="submit" class="btn btn-outline-primary">
+                                                <i class="ti ti-search"></i> Search
+                                            </button>
+                                            <?php if (!empty($search)): ?>
+                                            <a href="?" class="btn btn-outline-secondary">
+                                                <i class="ti ti-x"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            Showing <?= count($data) ?> of <?= $totalRecords ?> members
+                                            <?php if (!empty($search)): ?>(filtered from total)<?php endif; ?>
+                                        </small>
+                                        <div class="mt-1">
+                                            <form method="GET" class="d-inline-flex align-items-center gap-2">
+                                                <input type="hidden" name="page" value="1">
+                                                <?php if ($search !== ''): ?>
+                                                <input type="hidden" name="search"
+                                                    value="<?= htmlspecialchars($search) ?>">
+                                                <?php endif; ?>
+                                                <?php if (!empty($sort)): ?>
+                                                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                                <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                                                <?php endif; ?>
+                                                <label for="limitSelect" class="me-1 text-muted mb-0">Show:</label>
+                                                <select id="limitSelect" name="limit"
+                                                    class="form-select form-select-sm w-auto"
+                                                    onchange="this.form.submit()">
+                                                    <?php foreach ([10, 100, 500] as $opt): ?>
+                                                    <option value="<?= $opt ?>"
+                                                        <?= ($limit === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Data Table -->
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover mb-0">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th>ID</th>
-                                                <th>Student Name</th>
-                                                <th>Start Year</th>
-                                                <th>End Year</th>
-                                                <th>Department</th>
-                                                <th>Position</th>
-                                                <th>Active</th>
+                                                <?php
+                                                function sort_link_ppim($label, $key, $currentSort, $currentDir, $search, $limit) {
+                                                    $newDir = ($currentSort === $key && $currentDir === 'asc') ? 'desc' : 'asc';
+                                                    $qs = http_build_query(array_filter([
+                                                        'page' => 1,
+                                                        'search' => $search !== '' ? $search : null,
+                                                        'sort' => $key,
+                                                        'dir' => $newDir,
+                                                        'limit' => $limit,
+                                                    ]));
+                                                    $arrow = '';
+                                                    if ($currentSort === $key) {
+                                                        $arrow = $currentDir === 'asc' ? ' ▲' : ' ▼';
+                                                    }
+                                                    return '<a class="text-white text-decoration-none" href="?' . htmlspecialchars($qs) . '">' . htmlspecialchars($label) . $arrow . '</a>';
+                                                }
+                                                ?>
+                                                <th><?= sort_link_ppim('No', 'id', $sort, $dir, $search, $limit) ?></th>
+                                                <th><?= sort_link_ppim('Student Name', 'fullname', $sort, $dir, $search, $limit) ?>
+                                                </th>
+                                                <th><?= sort_link_ppim('Start Year', 'start_year', $sort, $dir, $search, $limit) ?>
+                                                </th>
+                                                <th><?= sort_link_ppim('End Year', 'end_year', $sort, $dir, $search, $limit) ?>
+                                                </th>
+                                                <th><?= sort_link_ppim('Department', 'department', $sort, $dir, $search, $limit) ?>
+                                                </th>
+                                                <th><?= sort_link_ppim('Position', 'position', $sort, $dir, $search, $limit) ?>
+                                                </th>
+                                                <th><?= sort_link_ppim('Active', 'Active', $sort, $dir, $search, $limit) ?>
+                                                </th>
                                                 <th width="200">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php
-                                            $data = $studentDB->getTableDataWithJoins('ppim');
-                                            foreach ($data as $row): ?>
+                                            <?php if (empty($data)): ?>
                                             <tr>
-                                                <td><?= htmlspecialchars($row['ppim_id']) ?></td>
+                                                <td colspan="8" class="text-center py-4">
+                                                    <div class="text-muted">
+                                                        <i class="ti ti-search fs-24 mb-2"></i>
+                                                        <p class="mb-0">
+                                                            <?php if (!empty($search)): ?>
+                                                            No PPIM member found matching
+                                                            "<?= htmlspecialchars($search) ?>"
+                                                            <?php else: ?>
+                                                            No PPIM member found
+                                                            <?php endif; ?>
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php else: ?>
+                                            <?php
+                                                $rowNum = ($dir === 'desc') ? (($page - 1) * $limit + count($data)) : (($page - 1) * $limit + 1);
+                                                foreach ($data as $row): ?>
+                                            <tr>
+                                                <td><?= $dir === 'desc' ? $rowNum-- : $rowNum++ ?></td>
                                                 <td><?= htmlspecialchars($row['fullname'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['start_year']) ?></td>
                                                 <td><?= htmlspecialchars($row['end_year'] ?? 'Current') ?></td>
@@ -160,7 +266,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['position'] ?? '') ?></td>
                                                 <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editPpimModal<?= $row['ppim_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -170,7 +277,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="ppim">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['ppim_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -252,9 +360,91 @@ $credit_footer = '
                                                 </td>
                                             </tr>
                                             <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
+                                <!-- Pagination -->
+                                <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted">
+                                            Page <?= $page ?> of <?= $totalPages ?>
+                                        </small>
+                                    </div>
+                                    <nav aria-label="PPIM pagination">
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <!-- Previous Page -->
+                                            <?php if ($page > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Page Numbers -->
+                                            <?php
+                                            $startPage = max(1, $page - 2);
+                                            $endPage = min($totalPages, $page + 2);
+                                            
+                                            if ($startPage > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">1</a>
+                                            </li>
+                                            <?php if ($startPage > 2): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+
+                                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                <a class="page-link"
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($endPage < $totalPages): ?>
+                                            <?php if ($endPage < $totalPages - 1): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $totalPages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>"><?= $totalPages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Next Page -->
+                                            <?php if ($page < $totalPages): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -292,10 +482,10 @@ $credit_footer = '
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -303,7 +493,7 @@ $credit_footer = '
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
 </body>
 

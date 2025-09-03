@@ -4,13 +4,13 @@
     <!-- Brand Logo -->
     <a href="index.html" class="logo">
         <span class="logo-light">
-            <span class="logo-lg"><img src="assets/images/logo.png" alt="logo"></span>
-            <span class="logo-sm text-center"><img src="assets/images/logo-sm.png" alt="small logo"></span>
+            <span class="logo-lg"><img src="../assets/images/logo.png" alt="logo"></span>
+            <span class="logo-sm text-center"><img src="../assets/images/logo-sm.png" alt="small logo"></span>
         </span>
 
         <span class="logo-dark">
-            <span class="logo-lg"><img src="assets/images/logo-dark.png" alt="dark logo"></span>
-            <span class="logo-sm text-center"><img src="assets/images/logo-sm.png" alt="small logo"></span>
+            <span class="logo-lg"><img src="../assets/images/logo-dark.png" alt="dark logo"></span>
+            <span class="logo-sm text-center"><img src="../assets/images/logo-sm.png" alt="small logo"></span>
         </span>
     </a>
 
@@ -30,7 +30,7 @@
         <ul class="side-nav">
 
             <li class="side-nav-item">
-                <a href="index.php" class="side-nav-link">
+                <a href="../index.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-dashboard"></i></span>
                     <span class="menu-text"> Dashboard </span>
                 </a>
@@ -39,7 +39,7 @@
             <li class="side-nav-title mt-2">Apps & Pages</li>
 
             <li class="side-nav-item">
-                <a href="calendar.php" class="side-nav-link">
+                <a href="../calendar.php" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-calendar-filled"></i></span>
                     <span class="menu-text"> Calendar </span>
                 </a>
@@ -63,32 +63,32 @@
                 <div class="collapse" id="studentdatabasesidebar">
                     <ul class="sub-menu">
                         <li class="side-nav-item">
-                            <a href="student-database.php" class="side-nav-link">
+                            <a href="../database/student.php" class="side-nav-link">
                                 <span class="menu-text">Students</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="ppim-database.php" class="side-nav-link">
+                            <a href="../database/ppim.php" class="side-nav-link">
                                 <span class="menu-text">PPIM Members</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="ppi-campus-database.php" class="side-nav-link">
+                            <a href="../database/ppi-campus.php" class="side-nav-link">
                                 <span class="menu-text">PPI Campus Members</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="university-database.php" class="side-nav-link">
+                            <a href="../database/university.php" class="side-nav-link">
                                 <span class="menu-text">Universities</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="postcode-database.php" class="side-nav-link">
+                            <a href="../database/postcode.php" class="side-nav-link">
                                 <span class="menu-text">Postcodes</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="other-student-database.php" class="side-nav-link">
+                            <a href="../database/others.php" class="side-nav-link">
                                 <span class="menu-text">Others</span>
                             </a>
                         </li>
@@ -108,12 +108,12 @@
                 <div class="collapse" id="userlist">
                     <ul class="sub-menu">
                         <li class="side-nav-item">
-                            <a href="user.php" class="side-nav-link">
+                            <a href="../useraccount/user.php" class="side-nav-link">
                                 <span class="menu-text">User List</span>
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="user-type.php" class="side-nav-link">
+                            <a href="../useraccount/user-type.php" class="side-nav-link">
                                 <span class="menu-text">User Type</span>
                             </a>
                         </li>
@@ -141,13 +141,13 @@
             <!-- Brand Logo -->
             <a href="index.html" class="logo">
                 <span class="logo-light">
-                    <span class="logo-lg"><img src="assets/images/logo.png" alt="logo"></span>
-                    <span class="logo-sm"><img src="assets/images/logo-sm.png" alt="small logo"></span>
+                    <span class="logo-lg"><img src="../assets/images/logo.png" alt="logo"></span>
+                    <span class="logo-sm"><img src="../assets/images/logo-sm.png" alt="small logo"></span>
                 </span>
 
                 <span class="logo-dark">
-                    <span class="logo-lg"><img src="assets/images/logo-dark.png" alt="dark logo"></span>
-                    <span class="logo-sm"><img src="assets/images/logo-sm.png" alt="small logo"></span>
+                    <span class="logo-lg"><img src="../assets/images/logo-dark.png" alt="dark logo"></span>
+                    <span class="logo-sm"><img src="../assets/images/logo-sm.png" alt="small logo"></span>
                 </span>
             </a>
 
@@ -225,7 +225,7 @@
                             <div class="dropdown-item notification-item py-2 text-wrap active" id="notification-1">
                                 <span class="d-flex align-items-center">
                                     <span class="me-3 position-relative flex-shrink-0">
-                                        <img src="assets/images/users/avatar-2.jpg" class="avatar-md rounded-circle"
+                                        <img src="../assets/images/users/avatar-2.jpg" class="avatar-md rounded-circle"
                                             alt="" />
                                         <span class="position-absolute rounded-pill bg-danger notification-badge">
                                             <i class="ti ti-message-circle"></i>
@@ -252,7 +252,7 @@
                             <div class="dropdown-item notification-item py-2 text-wrap" id="notification-2">
                                 <span class="d-flex align-items-center">
                                     <span class="me-3 position-relative flex-shrink-0">
-                                        <img src="assets/images/users/avatar-4.jpg" class="avatar-md rounded-circle"
+                                        <img src="../assets/images/users/avatar-4.jpg" class="avatar-md rounded-circle"
                                             alt="" />
                                         <span class="position-absolute rounded-pill bg-info notification-badge">
                                             <i class="ti ti-currency-dollar"></i>
@@ -304,7 +304,7 @@
                             <div class="dropdown-item notification-item py-2 text-wrap" id="notification-4">
                                 <span class="d-flex align-items-center">
                                     <span class="me-3 position-relative flex-shrink-0">
-                                        <img src="assets/images/users/avatar-7.jpg" class="avatar-md rounded-circle"
+                                        <img src="../assets/images/users/avatar-7.jpg" class="avatar-md rounded-circle"
                                             alt="" />
                                         <span class="position-absolute rounded-pill bg-secondary notification-badge">
                                             <i class="ti ti-plus"></i>
@@ -331,7 +331,7 @@
                             <div class="dropdown-item notification-item py-2 text-wrap" id="notification-5">
                                 <span class="d-flex align-items-center">
                                     <span class="me-3 position-relative flex-shrink-0">
-                                        <img src="assets/images/users/avatar-10.jpg" class="avatar-md rounded-circle"
+                                        <img src="../assets/images/users/avatar-10.jpg" class="avatar-md rounded-circle"
                                             alt="" />
                                         <span class="position-absolute rounded-pill bg-danger notification-badge">
                                             <i class="ti ti-heart-filled"></i>
@@ -377,19 +377,19 @@
                             <div class="row g-0">
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/instagram.svg" alt="instagram">
+                                        <img src="../assets/images/brands/instagram.svg" alt="instagram">
                                         <span>Instagram</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/linkedin.svg" alt="linkedin">
+                                        <img src="../assets/images/brands/linkedin.svg" alt="linkedin">
                                         <span>LinkedIn</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/twitter.svg" alt="x">
+                                        <img src="../assets/images/brands/twitter.svg" alt="x">
                                         <span>X</span>
                                     </a>
                                 </div>
@@ -398,19 +398,19 @@
                             <div class="row g-0">
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/facebook.svg" alt="facebook">
+                                        <img src="../assets/images/brands/facebook.svg" alt="facebook">
                                         <span>Facebook</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/brands/facebook.svg" alt="youtube">
+                                        <img src="../assets/images/brands/facebook.svg" alt="youtube">
                                         <span>Youtube</span>
                                     </a>
                                 </div>
                                 <div class="col">
                                     <a class="dropdown-icon-item" href="#">
-                                        <img src="assets/images/browsers/web.svg" alt="website">
+                                        <img src="../assets/images/browsers/web.svg" alt="website">
                                         <span>Website</span>
                                     </a>
                                 </div>
@@ -441,7 +441,7 @@
                     <a class="topbar-link btn btn-outline-primary dropdown-toggle drop-arrow-none"
                         data-bs-toggle="dropdown" data-bs-offset="0,22" type="button" aria-haspopup="false"
                         aria-expanded="false">
-                        <img src="assets/images/users/avatar-1.jpg" width="24" class="rounded-circle me-lg-2 d-flex"
+                        <img src="../assets/images/users/avatar-1.jpg" width="24" class="rounded-circle me-lg-2 d-flex"
                             alt="user-image">
                         <span class="d-lg-flex flex-column gap-1 d-none">
                             <?php echo $main->getUserName(); ?>.
@@ -455,7 +455,7 @@
                         </div>
 
                         <!-- item-->
-                        <a href="account.php" class="dropdown-item">
+                        <a href="../account.php" class="dropdown-item">
                             <i class="ti ti-user-hexagon me-1 fs-17 align-middle"></i>
                             <span class="align-middle">My Account</span>
                         </a>
@@ -463,7 +463,7 @@
                         <div class="dropdown-divider"></div>
 
                         <!-- item-->
-                        <a href="assets/php/page/logout.php" class="dropdown-item active fw-semibold text-danger">
+                        <a href="../assets/php/page/logout.php" class="dropdown-item active fw-semibold text-danger">
                             <i class="ti ti-logout me-1 fs-17 align-middle"></i>
                             <span class="align-middle">Log Out</span>
                         </a>

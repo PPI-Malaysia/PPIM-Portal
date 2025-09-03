@@ -1,6 +1,6 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
@@ -12,6 +12,15 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+// Pagination and search parameters
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 10;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Get paginated data and total count
+$data = $studentDB->getPaginatedTableDataWithJoins('ppi_campus', $page, $limit, $search);
+$totalRecords = $studentDB->getTotalCount('ppi_campus', $search);
+$totalPages = ceil($totalRecords / $limit);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,19 +35,19 @@ $credit_footer = '
     <link rel="shortcut icon" href="assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -146,6 +155,33 @@ $credit_footer = '
                                     </div>
                                 </div>
 
+                                <!-- Search Form -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <form method="GET" class="d-flex">
+                                            <input type="text" name="search" class="form-control me-2"
+                                                placeholder="Search members (name, university, dept, position)..."
+                                                value="<?= htmlspecialchars($search) ?>">
+                                            <button type="submit" class="btn btn-outline-primary">
+                                                <i class="ti ti-search"></i> Search
+                                            </button>
+                                            <?php if (!empty($search)): ?>
+                                            <a href="?" class="btn btn-outline-secondary ms-2">
+                                                <i class="ti ti-x"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            Showing <?= count($data) ?> of <?= $totalRecords ?> member
+                                            <?php if (!empty($search)): ?>
+                                            (filtered by "<?= htmlspecialchars($search) ?>")
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                                </div>
+
                                 <!-- Data Table -->
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover mb-0">
@@ -162,9 +198,24 @@ $credit_footer = '
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php
-                                            $data = $studentDB->getTableDataWithJoins('ppi_campus');
-                                            foreach ($data as $row): ?>
+                                            <?php if (empty($data)): ?>
+                                            <tr>
+                                                <td colspan="8" class="text-center py-4">
+                                                    <div class="text-muted">
+                                                        <i class="ti ti-search fs-24 mb-2"></i>
+                                                        <p class="mb-0">
+                                                            <?php if (!empty($search)): ?>
+                                                            No PPI campus member found matching
+                                                            "<?= htmlspecialchars($search) ?>"
+                                                            <?php else: ?>
+                                                            No PPI campus member found
+                                                            <?php endif; ?>
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php else: ?>
+                                            <?php foreach ($data as $row): ?>
                                             <tr>
                                                 <td><?= htmlspecialchars($row['ppi_campus_id']) ?></td>
                                                 <td><?= htmlspecialchars($row['fullname'] ?? '') ?></td>
@@ -174,7 +225,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['position'] ?? '') ?></td>
                                                 <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editPpiCampusModal<?= $row['ppi_campus_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -184,7 +236,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="ppi_campus">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['ppi_campus_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -273,9 +326,91 @@ $credit_footer = '
                                                 </td>
                                             </tr>
                                             <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
+                                <!-- Pagination -->
+                                <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted">
+                                            Page <?= $page ?> of <?= $totalPages ?>
+                                        </small>
+                                    </div>
+                                    <nav aria-label="PPI Campus pagination">
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <!-- Previous Page -->
+                                            <?php if ($page > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="ti ti-chevron-left"></i> Previous
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Page Numbers -->
+                                            <?php
+                                            $startPage = max(1, $page - 2);
+                                            $endPage = min($totalPages, $page + 2);
+                                            
+                                            if ($startPage > 1): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">1</a>
+                                            </li>
+                                            <?php if ($startPage > 2): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
+
+                                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                <a class="page-link"
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $i ?></a>
+                                            </li>
+                                            <?php endfor; ?>
+
+                                            <?php if ($endPage < $totalPages): ?>
+                                            <?php if ($endPage < $totalPages - 1): ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            <?php endif; ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $totalPages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $totalPages ?></a>
+                                            </li>
+                                            <?php endif; ?>
+
+                                            <!-- Next Page -->
+                                            <?php if ($page < $totalPages): ?>
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                            <?php else: ?>
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Next <i class="ti ti-chevron-right"></i>
+                                                </span>
+                                            </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -313,10 +448,10 @@ $credit_footer = '
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -324,7 +459,7 @@ $credit_footer = '
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
 </body>
 

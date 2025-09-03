@@ -203,12 +203,14 @@ class StudentDatabase extends ppim {
                 break;
 
             case 'university':
-                $stmt = $this->conn->prepare("INSERT INTO university (university_name, address, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?)");
+                $stmt = $this->conn->prepare("INSERT INTO university (university_name, address, email, phone_num, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?)");
                 $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
+                $email = empty($data['email']) ? '' : $data['email'];
+                $phone_num = empty($data['phone_num']) ? '' : $data['phone_num'];
                 $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
                 $address = empty($data['address']) ? null : $data['address'];
                 $is_active = (int)($data['is_active'] ?? 1);
-                $stmt->bind_param("ssiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active);
+                $stmt->bind_param("ssssiii", $data['university_name'], $email, $phone_num, $address, $type_id, $postcode_id, $is_active);
                 break;
 
             case 'student':
@@ -306,14 +308,16 @@ class StudentDatabase extends ppim {
                 break;
 
             case 'university':
-                $stmt = $this->conn->prepare("UPDATE university SET university_name = ?, address = ?, type_id = ?, postcode_id = ?, is_active = ? WHERE university_id = ?");
+                $stmt = $this->conn->prepare("UPDATE university SET university_name = ?, email = ?, phone_num = ?, address = ?, type_id = ?, postcode_id = ?, is_active = ? WHERE university_id = ?");
                 $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
+                $email = empty($data['email']) ? '' : $data['email'];
+                $phone_num = empty($data['phone_num']) ? '' : $data['phone_num'];
                 $postcode_id = empty($data['postcode_id']) ? null : (int)$data['postcode_id'];
                 $address = empty($data['address']) ? null : $data['address'];
                 $is_active = (int)($data['is_active'] ?? 1);
                 $university_id = (int)($data['university_id'] ?? 0);
-                
-                $stmt->bind_param("ssiiii", $data['university_name'], $address, $type_id, $postcode_id, $is_active, $university_id);
+
+                $stmt->bind_param("ssssiiii", $data['university_name'], $email, $phone_num, $address, $type_id, $postcode_id, $is_active, $university_id);
                 break;
 
             case 'student':
@@ -571,7 +575,7 @@ class StudentDatabase extends ppim {
     /**
      * Get paginated data with joins and search functionality
      */
-    public function getPaginatedTableDataWithJoins($table, $page = 1, $limit = 10, $search = '') {
+    public function getPaginatedTableDataWithJoins($table, $page = 1, $limit = 10, $search = '', $sort = null, $dir = 'asc') {
         $offset = ($page - 1) * $limit;
         
         switch ($table) {
@@ -622,7 +626,19 @@ class StudentDatabase extends ppim {
                     $types = "ssss";
                 }
                 
-                $orderClause = " ORDER BY s.fullname ASC";
+                // Sorting support for specific columns
+                $allowedSorts = [
+                    'id' => 's.student_id',
+                    'fullname' => 's.fullname',
+                    'university' => 'u.university_name',
+                    'degree' => 's.degree',
+                ];
+                $dir = strtolower($dir) === 'desc' ? 'DESC' : 'ASC';
+                if ($sort && isset($allowedSorts[$sort])) {
+                    $orderClause = " ORDER BY " . $allowedSorts[$sort] . " " . $dir;
+                } else {
+                    $orderClause = " ORDER BY s.fullname ASC"; // default
+                }
                 $limitClause = " LIMIT ? OFFSET ?";
                 
                 $query = $baseQuery . $whereClause . $orderClause . $limitClause;
@@ -655,6 +671,73 @@ class StudentDatabase extends ppim {
                 $params[] = $offset;
                 $types .= "ii";
                 
+                break;
+            
+            case 'ppi_campus':
+                $baseQuery = "SELECT pc.*, s.fullname, u.university_name 
+                             FROM ppi_campus pc 
+                             LEFT JOIN student s ON pc.student_id = s.student_id 
+                             LEFT JOIN university u ON pc.university_id = u.university_id";
+
+                $whereClause = "";
+                $params = [];
+                $types = "";
+
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR u.university_name LIKE ? OR pc.department LIKE ? OR pc.position LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+
+                $orderClause = " ORDER BY pc.start_year DESC, s.fullname ASC";
+                $limitClause = " LIMIT ? OFFSET ?";
+
+                $query = $baseQuery . $whereClause . $orderClause . $limitClause;
+                $params[] = $limit;
+                $params[] = $offset;
+                $types .= "ii";
+                
+                break;
+            
+            case 'ppim':
+                $baseQuery = "SELECT p.*, s.fullname 
+                             FROM ppim p 
+                             LEFT JOIN student s ON p.student_id = s.student_id";
+
+                $whereClause = "";
+                $params = [];
+                $types = "";
+
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR p.department LIKE ? OR p.position LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam];
+                    $types = "sss";
+                }
+
+                // Sorting support
+                $allowedSorts = [
+                    'id' => 'p.ppim_id',
+                    'fullname' => 's.fullname',
+                    'start_year' => 'p.start_year',
+                    'end_year' => 'p.end_year',
+                    'department' => 'p.department',
+                    'position' => 'p.position',
+                ];
+                $dir = strtolower($dir) === 'desc' ? 'DESC' : 'ASC';
+                if ($sort && isset($allowedSorts[$sort])) {
+                    $orderClause = " ORDER BY " . $allowedSorts[$sort] . " " . $dir;
+                } else {
+                    $orderClause = " ORDER BY p.start_year DESC, s.fullname ASC";
+                }
+                $limitClause = " LIMIT ? OFFSET ?";
+
+                $query = $baseQuery . $whereClause . $orderClause . $limitClause;
+                $params[] = $limit;
+                $params[] = $offset;
+                $types .= "ii";
+
                 break;
             default:
                 throw new Exception("Pagination not implemented for table: " . $table);
@@ -737,6 +820,45 @@ class StudentDatabase extends ppim {
                     $types = "ss";
                 }
                 
+                $query = $baseQuery . $whereClause;
+                break;
+            
+            case 'ppi_campus':
+                $baseQuery = "SELECT COUNT(*) as total 
+                             FROM ppi_campus pc 
+                             LEFT JOIN student s ON pc.student_id = s.student_id 
+                             LEFT JOIN university u ON pc.university_id = u.university_id";
+
+                $whereClause = "";
+                $params = [];
+                $types = "";
+
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR u.university_name LIKE ? OR pc.department LIKE ? OR pc.position LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                    $types = "ssss";
+                }
+
+                $query = $baseQuery . $whereClause;
+                break;
+            
+            case 'ppim':
+                $baseQuery = "SELECT COUNT(*) as total 
+                             FROM ppim p 
+                             LEFT JOIN student s ON p.student_id = s.student_id";
+
+                $whereClause = "";
+                $params = [];
+                $types = "";
+
+                if (!empty($search)) {
+                    $whereClause = " WHERE (s.fullname LIKE ? OR p.department LIKE ? OR p.position LIKE ?)";
+                    $searchParam = "%$search%";
+                    $params = [$searchParam, $searchParam, $searchParam];
+                    $types = "sss";
+                }
+
                 $query = $baseQuery . $whereClause;
                 break;
             default:

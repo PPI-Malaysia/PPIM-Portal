@@ -1,6 +1,6 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand, Rafi Daffa Ramadhani";
@@ -36,19 +36,19 @@ $totalPages = ceil($totalRecords / $limit);
     <link rel="shortcut icon" href="assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -185,7 +185,8 @@ $totalPages = ceil($totalRecords / $limit);
                                                 <td><?= htmlspecialchars($row['state_name']) ?></td>
 
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editPostcodeModal<?= $row['zip_code'] ?>">
                                                         <i class="ti ti-edit"></i>
@@ -195,7 +196,8 @@ $totalPages = ceil($totalRecords / $limit);
                                                         <input type="hidden" name="table" value="postcode">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['zip_code']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i>
                                                         </button>
@@ -378,10 +380,10 @@ $totalPages = ceil($totalRecords / $limit);
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -389,7 +391,7 @@ $totalPages = ceil($totalRecords / $limit);
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
 </body>
 

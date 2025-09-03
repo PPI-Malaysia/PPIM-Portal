@@ -1,6 +1,6 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
 // Credit: fill your name as the person who created this page here
 $credit = "Christopher Bertrand,  Rafi Daffa Ramadhani";
@@ -33,22 +33,22 @@ $totalPages = ceil($totalRecords / $limit);
     <meta content="<?php echo htmlspecialchars($credit); ?>" name="author" />
 
     <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="shortcut icon" href="../assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -101,15 +101,23 @@ $totalPages = ceil($totalRecords / $limit);
                                             <input type="hidden" name="action" value="create">
                                             <input type="hidden" name="table" value="university">
                                             <div class="col-md-4">
-                                                <label class="form-label">University Name</label>
+                                                <label class="form-label">University Name*</label>
                                                 <input type="text" name="university_name" class="form-control" required>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Address</label>
+                                                <label class="form-label">Email</label>
+                                                <input type="email" name="email" class="form-control">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Phone Number</label>
+                                                <input type="text" name="phone_num" class="form-control">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Address*</label>
                                                 <textarea name="address" class="form-control" rows="1"></textarea>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Type</label>
+                                                <label class="form-label">Type*</label>
                                                 <select name="type_id" class="form-select" required>
                                                     <option value="">Select Type</option>
                                                     <?php
@@ -121,8 +129,10 @@ $totalPages = ceil($totalRecords / $limit);
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Postcode</label>
-                                                <select name="postcode_id" class="form-select">
+                                                <label class="form-label">Postcode*</label>
+                                                <select name="postcode_id" class="form-control"
+                                                    id="choices-single-no-sorting" data-choices
+                                                    data-choices-sorting-false>
                                                     <option value="">Select Postcode</option>
                                                     <?php
                                                     $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
@@ -134,7 +144,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Status</label>
+                                                <label class="form-label">Status*</label>
                                                 <select name="is_active" class="form-select">
                                                     <option value="1">Active</option>
                                                     <option value="0">Inactive</option>
@@ -181,6 +191,8 @@ $totalPages = ceil($totalRecords / $limit);
                                             <tr>
                                                 <th>ID</th>
                                                 <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
                                                 <th>Address</th>
                                                 <th>Type</th>
                                                 <th>Postcode</th>
@@ -212,18 +224,22 @@ $totalPages = ceil($totalRecords / $limit);
                                             <tr>
                                                 <td><?= $colnum ?></td>
                                                 <td><?= htmlspecialchars($row['university_name']) ?></td>
+                                                <td><?= htmlspecialchars($row['email'] ?? '') ?></td>
+                                                <td><?= htmlspecialchars($row['phone_num'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['address'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['type_name'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['zip_code'] ?? '') ?> -
                                                     <?= htmlspecialchars($row['city'] ?? '') ?></td>
                                                 <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-primary btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-secondary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal" data-bs-target="#ppiaccountmodal"
                                                         data-id="<?= $row['university_id']; ?>">
                                                         <i class="ti ti-user"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editUniversityModal<?= $row['university_id'] ?>">
                                                         <i class="ti ti-edit"></i>
@@ -233,7 +249,8 @@ $totalPages = ceil($totalRecords / $limit);
                                                         <input type="hidden" name="table" value="university">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['university_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i>
                                                         </button>
@@ -265,6 +282,19 @@ $totalPages = ceil($totalRecords / $limit);
                                                                                 class="form-control"
                                                                                 value="<?= htmlspecialchars($row['university_name']) ?>"
                                                                                 required>
+                                                                        </div>
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Email</label>
+                                                                            <input type="email" name="email"
+                                                                                class="form-control"
+                                                                                value="<?= htmlspecialchars($row['email']) ?>">
+                                                                        </div>
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Phone
+                                                                                Number</label>
+                                                                            <input type="text" name="phone_num"
+                                                                                class="form-control"
+                                                                                value="<?= htmlspecialchars($row['phone_num']) ?>">
                                                                         </div>
                                                                         <div class="mb-3">
                                                                             <label class="form-label">Address</label>
@@ -483,10 +513,10 @@ $totalPages = ceil($totalRecords / $limit);
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -494,7 +524,7 @@ $totalPages = ceil($totalRecords / $limit);
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -518,7 +548,7 @@ $totalPages = ceil($totalRecords / $limit);
         `;
 
                 // Build the URL with the ID parameter
-                const phpUrl = `assets/php/page/ppi_campus_account_modal.php?id=${dataId}`;
+                const phpUrl = `../assets/php/page/ppi_campus_account_modal.php?id=${dataId}`;
 
                 // Fetch content from PHP file
                 fetch(phpUrl)

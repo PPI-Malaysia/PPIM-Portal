@@ -1,14 +1,20 @@
 <?php
 // Load the new StudentDatabase class
-require_once("assets/php/student-database.php");
+require_once("../assets/php/student-database.php");
 
-// Pagination and search parameters
+// Pagination, search, and sorting parameters
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 10; // 10 entries per page
+// Entries per page: allow 10, 100, 500
+$allowedLimits = [10, 100, 500];
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+if (!in_array($limit, $allowedLimits, true)) { $limit = 10; }
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : null; // allowed: id, fullname, university, degree
+$dir = isset($_GET['dir']) ? strtolower($_GET['dir']) : 'asc';
+$dir = $dir === 'desc' ? 'desc' : 'asc';
 
 // Get paginated data
-$data = $studentDB->getPaginatedTableDataWithJoins('student', $page, $limit, $search);
+$data = $studentDB->getPaginatedTableDataWithJoins('student', $page, $limit, $search, $sort, $dir);
 $totalRecords = $studentDB->getTotalCount('student', $search);
 $totalPages = ceil($totalRecords / $limit);
 
@@ -33,22 +39,22 @@ $credit_footer = '
     <meta content="<?php echo htmlspecialchars($credit); ?>" name="author" />
 
     <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="shortcut icon" href="../assets/images/favicon.ico">
 
     <!-- Theme Config Js -->
-    <script src="assets/js/config.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <!-- Vendor css -->
-    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
-    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="../assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
 
     <!-- Icons css -->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/icons.min.css" rel="stylesheet" type="text/css" />
 
     <!-- Database css -->
-    <link href="assets/css/student-database.css" rel="stylesheet" type="text/css" />
+    <link href="../assets/css/student-database.css" rel="stylesheet" type="text/css" />
 
     <!-- Toastify CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -97,10 +103,15 @@ $credit_footer = '
                                 <div class="row mb-3">
                                     <div class="col-md-6">
                                         <form method="GET" class="d-flex gap-2">
+                                            <?php if (!empty($sort)): ?>
+                                            <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                            <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                                            <?php endif; ?>
+                                            <input type="hidden" name="limit" value="<?= htmlspecialchars($limit) ?>">
                                             <input type="text" name="search" class="form-control"
                                                 placeholder="Search students..."
                                                 value="<?= htmlspecialchars($search) ?>">
-                                            <button type="submit" class="btn btn-primary">
+                                            <button type="submit" class="btn btn-outline-primary">
                                                 <i class="ti ti-search"></i> Search
                                             </button>
                                             <?php if (!empty($search)): ?>
@@ -117,6 +128,24 @@ $credit_footer = '
                                             (filtered from total)
                                             <?php endif; ?>
                                         </small>
+                                        <div class="mt-1">
+                                            <form method="GET" class="d-inline-flex align-items-center gap-2">
+                                                <input type="hidden" name="page" value="1">
+                                                <?php if ($search !== ''): ?>
+                                                    <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                                <?php endif; ?>
+                                                <?php if (!empty($sort)): ?>
+                                                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                                    <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                                                <?php endif; ?>
+                                                <label for="limitSelect" class="me-1 text-muted mb-0">Show:</label>
+                                                <select id="limitSelect" name="limit" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                                                    <?php foreach ([10, 100, 500] as $opt): ?>
+                                                        <option value="<?= $opt ?>" <?= ($limit === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -174,8 +203,10 @@ $credit_footer = '
                                                 <input type="text" name="phone_number" class="form-control">
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Postcode</label>
-                                                <select name="postcode_id" class="form-select">
+                                                <label class="form-label">Postcode*</label>
+                                                <select name="postcode_id" class="form-control"
+                                                    id="choices-single-no-sorting" data-choices
+                                                    data-choices-sorting-false>
                                                     <option value="">Select Postcode</option>
                                                     <?php
                                                     $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
@@ -222,12 +253,29 @@ $credit_footer = '
                                     <table class="table table-striped table-hover mb-0">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th>ID</th>
-                                                <th>Full Name</th>
-                                                <th>University</th>
+                                                <?php
+                                                // Helper to build sort URLs with toggle
+                                                function sort_link($label, $key, $currentSort, $currentDir, $search) {
+                                                    $newDir = ($currentSort === $key && $currentDir === 'asc') ? 'desc' : 'asc';
+                                                    $qs = http_build_query(array_filter([
+                                                        'page' => 1, // reset page on sort
+                                                        'search' => $search !== '' ? $search : null,
+                                                        'sort' => $key,
+                                                        'dir' => $newDir,
+                                                    ]));
+                                                    $arrow = '';
+                                                    if ($currentSort === $key) {
+                                                        $arrow = $currentDir === 'asc' ? ' ▲' : ' ▼';
+                                                    }
+                                                    return '<a class="text-white text-decoration-none" href="?' . htmlspecialchars($qs) . '">' . htmlspecialchars($label) . $arrow . '</a>';
+                                                }
+                                                ?>
+                                                <th><?= sort_link('No', 'id', $sort, $dir, $search) ?></th>
+                                                <th><?= sort_link('Full Name', 'fullname', $sort, $dir, $search) ?></th>
+                                                <th><?= sort_link('University', 'university', $sort, $dir, $search) ?></th>
                                                 <th>Email</th>
                                                 <th>Status</th>
-                                                <th>Degree</th>
+                                                <th><?= sort_link('Degree', 'degree', $sort, $dir, $search) ?></th>
                                                 <th>Active</th>
                                                 <th width="200">Actions</th>
                                             </tr>
@@ -251,9 +299,12 @@ $credit_footer = '
                                             </tr>
                                             <?php else: ?>
                                             <?php
+                                            $rowNum = ($dir === 'desc')
+                                                ? (($page - 1) * $limit + count($data))
+                                                : (($page - 1) * $limit + 1);
                                             foreach ($data as $row): ?>
                                             <tr>
-                                                <td><?= htmlspecialchars($row['student_id']) ?></td>
+                                                <td><?= $dir === 'desc' ? $rowNum-- : $rowNum++ ?></td>
                                                 <td><?= htmlspecialchars($row['fullname']) ?></td>
                                                 <td><?= htmlspecialchars($row['university_name'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($row['email'] ?? '') ?></td>
@@ -263,7 +314,8 @@ $credit_footer = '
                                                 <td><?= htmlspecialchars($row['degree'] ?? '') ?></td>
                                                 <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
                                                 <td>
-                                                    <button type="button" class="btn btn-outline-warning btn-sm me-1"
+                                                    <button type="button"
+                                                        class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editStudentModal<?= $row['student_id'] ?>">
                                                         <i class="ti ti-edit"></i> Edit
@@ -273,7 +325,8 @@ $credit_footer = '
                                                         <input type="hidden" name="table" value="student">
                                                         <input type="hidden" name="id"
                                                             value="<?= htmlspecialchars($row['student_id']) ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                        <button type="submit"
+                                                            class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
                                                             <i class="ti ti-trash"></i> Delete
                                                         </button>
@@ -419,7 +472,7 @@ $credit_footer = '
                                             <?php if ($page > 1): ?>
                                             <li class="page-item">
                                                 <a class="page-link"
-                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    href="?page=<?= $page - 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">
                                                     <i class="ti ti-chevron-left"></i> Previous
                                                 </a>
                                             </li>
@@ -432,7 +485,7 @@ $credit_footer = '
                                             for ($i = $start; $i <= $end; $i++): ?>
                                             <li class="page-item <?= $i == $page ? 'active' : '' ?>">
                                                 <a class="page-link"
-                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">
                                                     <?= $i ?>
                                                 </a>
                                             </li>
@@ -441,7 +494,7 @@ $credit_footer = '
                                             <?php if ($page < $totalPages): ?>
                                             <li class="page-item">
                                                 <a class="page-link"
-                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                                    href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= !empty($sort) ? '&sort=' . urlencode($sort) . '&dir=' . urlencode($dir) : '' ?><?= '&limit=' . urlencode((string)$limit) ?>">
                                                     Next <i class="ti ti-chevron-right"></i>
                                                 </a>
                                             </li>
@@ -487,10 +540,10 @@ $credit_footer = '
         <?php $studentDB->renderTheme(); ?>
 
         <!-- Vendor js -->
-        <script src="assets/js/vendor.min.js"></script>
+        <script src="../assets/js/vendor.min.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="../assets/js/app.js"></script>
 
         <!-- Toast notification js -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.js"
@@ -498,7 +551,7 @@ $credit_footer = '
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <!-- Custom js -->
-        <script src="assets/js/database-nav.js"></script>
+        <script src="../assets/js/database-nav.js"></script>
 
 </body>
 
