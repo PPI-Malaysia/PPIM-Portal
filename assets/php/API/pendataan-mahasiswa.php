@@ -238,7 +238,37 @@ try {
         try {
             $row = select_match($conn, $in);
             if ($row) {
-                $token = make_token((int)$row['student_id'], 86400, $SECRET, $ctx); // 24h
+                $token = make_token((int)$row['student_id'], 3600, $SECRET, $ctx);
+                $conn->commit();
+                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($row)]);
+            }
+            fail('student not found', 404);
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('check action error: '.$e->getMessage());
+            fail('Database error', 409);
+        }
+    }
+    elseif ($action === 'checkorcrete') {
+        // normalize
+        $in = [
+            'fullname'      => norm_fullname($body['fullname'] ?? ''),
+            'dob'           => norm_dob($body['dob'] ?? ''),        // YYYY-MM-DD
+            'passport'      => norm_passport($body['passport'] ?? ''),
+            'phone_number'  => norm_phone($body['phone_number'] ?? ''),
+            'university_id' => isset($body['university_id']) ? (string)$body['university_id'] : null,
+            'university'    => trim((string)($body['university'] ?? '')),
+        ];
+        if ($in['fullname']==='' || $in['dob']==='') fail('fullname and dob are required', 422);
+
+        // token context (optional here, included if present)
+        $ctx = read_token_context($body);
+
+        $conn->begin_transaction();
+        try {
+            $row = select_match($conn, $in);
+            if ($row) {
+                $token = make_token((int)$row['student_id'], 3600, $SECRET, $ctx);
                 $conn->commit();
                 ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($row)]);
             }
@@ -258,7 +288,7 @@ try {
             $row = get_student_row($conn, $sid);
             if (!$row) { throw new Exception('Post-insert fetch failed'); }
 
-            $token = make_token($sid, 86400, $SECRET, $ctx);
+            $token = make_token($sid, 3600, $SECRET, $ctx);
             $conn->commit();
             ok(['mode'=>'created','token'=>$token,'student'=>redact_student($row)]);
         } catch (Throwable $e) {
