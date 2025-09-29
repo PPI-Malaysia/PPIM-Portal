@@ -116,7 +116,9 @@ function redact_student(mysqli $conn, array $r): array {
     if ($addr) $addr = mb_strlen($addr) > 12 ? (mb_substr($addr,0,12).'…') : $addr;
     $uid = $r['university_id'] !== null ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
-    $ppim = lookup_ppim_record($conn, $r['student_id']);
+    $sid = $r['student_id'];
+    $ppi = lookup_ppi_record($conn, $sid, $uid);
+    $ppim = lookup_ppim_record($conn, $sid);
     return [
         'fullname'   => $r['fullname'],
         'dob'        => $r['dob'],
@@ -131,7 +133,7 @@ function redact_student(mysqli $conn, array $r): array {
         'address'    => $r['address'] ?? null,
         'postcode_id'=> $r['postcode_id'] ?? null,
         'status_id'  => $r['status_id'] !== null ? (int)$r['status_id'] : null,
-        'ppi' => '',
+        'ppi' => $ppi,
         'ppim' => $ppim
     ];
 }
@@ -156,6 +158,26 @@ function lookup_ppim_record(mysqli $conn, ?int $student_id) : ?string {
     if (!$student_id) return json_encode([]);
     $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppim WHERE student_id = ? ORDER BY COALESCE(end_year,9999) DESC');
     $stmt->bind_param('i', $student_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $out = [];
+    while ($r = $res->fetch_assoc()) {
+        $out[] = [
+            'start_year'  => (int)$r['start_year'],
+            'end_year'    => isset($r['end_year']) ? (int)$r['end_year'] : null,
+            'department'  => $r['department'],
+            'position'    => $r['position'],
+            'description' => $r['description'],
+            'is_active'   => (int)$r['is_active'],
+        ];
+    }
+    $stmt->close();
+    return json_encode($out, JSON_UNESCAPED_UNICODE);
+}
+function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) : ?string {
+    if (!$student_id) return json_encode([]);
+    $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppi_campus WHERE student_id = ? AND university_id = ? ORDER BY COALESCE(end_year,9999) DESC');
+    $stmt->bind_param('ii', $student_id, $university_id);
     $stmt->execute();
     $res = $stmt->get_result();
     $out = [];
