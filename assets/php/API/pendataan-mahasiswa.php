@@ -116,7 +116,7 @@ function redact_student(mysqli $conn, array $r): array {
     if ($addr) $addr = mb_strlen($addr) > 12 ? (mb_substr($addr,0,12).'…') : $addr;
     $uid = $r['university_id'] !== null ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
-
+    $ppim = lookup_ppim_record($conn, $r['student_id']);
     return [
         'fullname'   => $r['fullname'],
         'dob'        => $r['dob'],
@@ -132,7 +132,7 @@ function redact_student(mysqli $conn, array $r): array {
         'postcode_id'=> $r['postcode_id'] ?? null,
         'status_id'  => $r['status_id'] !== null ? (int)$r['status_id'] : null,
         'ppi' => '',
-        'ppim' => ''
+        'ppim' => $ppim
     ];
 }
 function lookup_university_id(mysqli $conn, ?string $university_id, ?string $university_name): ?int {
@@ -151,6 +151,26 @@ function lookup_university(mysqli $conn, ?int $university_id): ?string {
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
     return $res ? (string)$res['university_name'] : null;
+}
+function lookup_ppim_record(mysqli $conn, ?int $student_id) : ?string {
+    if (!$student_id) return json_encode([]);
+    $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppim WHERE student_id = ? ORDER BY COALESCE(end_year,9999) DESC');
+    $stmt->bind_param('i', $student_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $out = [];
+    while ($r = $res->fetch_assoc()) {
+        $out[] = [
+            'start_year'  => (int)$r['start_year'],
+            'end_year'    => isset($r['end_year']) ? (int)$r['end_year'] : null,
+            'department'  => $r['department'],
+            'position'    => $r['position'],
+            'description' => $r['description'],
+            'is_active'   => (bool)$r['is_active'],
+        ];
+    }
+    $stmt->close();
+    return json_encode($out, JSON_UNESCAPED_UNICODE);
 }
 function get_student_row(mysqli $conn, int $sid): ?array {
     $stmt = $conn->prepare('SELECT * FROM student WHERE student_id = ? LIMIT 1');
