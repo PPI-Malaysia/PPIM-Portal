@@ -97,38 +97,42 @@ function bearer_token_or_body(array $body): string {
     return (string)($body['token'] ?? '');
 }
 function read_token_context(array $body): array {
-    $width = isset($body['deviceScreenWidth']) ? (int)$body['deviceScreenWidth'] : null;
+    $width = isset($body['dsw']) ? (int)$body['dsw'] : null;
     $uaHdr = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $ua = isset($body['useragent']) && trim((string)$body['useragent']) !== '' ? (string)$body['useragent'] : $uaHdr;
+    $ua = isset($body['ua']) && trim((string)$body['ua']) !== '' ? (string)$body['ua'] : $uaHdr;
     $ugt = isset($body['ugt']) ? (string)$body['ugt'] : null;
     return ['w'=>$width, 'ua'=>$ua ?: null, 'ugt'=>$ugt];
 }
 
 // ---- Redaction / Lookup / Queries ----
-function redact_student(array $r): array {
+function redact_student(mysqli $conn, array $r): array {
     $passport = $r['passport'];
     if ($passport) $passport = preg_replace('/^(.{4}).+$/', '$1****', $passport);
+    $email = $r['email'];
+    $email = ($email && filter_var($email,FILTER_VALIDATE_EMAIL) && strlen(($p=explode('@',$email,2))[0])>4) ? substr($p[0],0,2).str_repeat('*',strlen($p[0])-4).substr($p[0],-2).'@'.$p[1] : $email;
     $phone = $r['phone_number'];
-    if ($phone) $phone = preg_replace('/^.*?(\d{4})$/', '****$1', $phone);
+    $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[2])) . $m[3], $phone) : null;
     $addr = $r['address'];
     if ($addr) $addr = mb_strlen($addr) > 12 ? (mb_substr($addr,0,12).'…') : $addr;
+    $uid = $r['university_id'] !== null ? (int)$r['university_id'] : null;
+    $uname = $uid ? lookup_university($conn, $uid) : null;
 
     return [
-        'student_id' => (int)$r['student_id'],
         'fullname'   => $r['fullname'],
         'dob'        => $r['dob'],
-        'email'      => $r['email'],
+        'email'      => $email,
         'passport'   => $passport,
         'phone'      => $phone,
-        'university_id' => $r['university_id'] !== null ? (int)$r['university_id'] : null,
+        'university_id' => $uid,
+        'university' => $uname,
+        'degree' => $r['degree'] ?? null,
         'level_of_qualification_id' => $r['level_of_qualification_id'] !== null ? (int)$r['level_of_qualification_id'] : null,
         'expected_graduate' => $r['expected_graduate'],
         'address'    => $r['address'] ?? null,
         'postcode_id'=> $r['postcode_id'] ?? null,
         'status_id'  => $r['status_id'] !== null ? (int)$r['status_id'] : null,
-        'is_active'  => (bool)$r['is_active'],
-        'created_at' => $r['created_at'],
-        'updated_at' => $r['updated_at']
+        'ppi' => '',
+        'ppim' => ''
     ];
 }
 function lookup_university_id(mysqli $conn, ?string $university_id, ?string $university_name): ?int {
@@ -140,6 +144,14 @@ function lookup_university_id(mysqli $conn, ?string $university_id, ?string $uni
     $res = $stmt->get_result()->fetch_assoc();
     return $res ? (int)$res['university_id'] : null;
 }
+function lookup_university(mysqli $conn, ?int $university_id): ?string {
+    if (!$university_id) return null;
+    $stmt = $conn->prepare('SELECT university_name FROM university WHERE university_id = ? LIMIT 1');
+    $stmt->bind_param('i', $university_id);
+    $stmt->execute();
+    $res = $stmt->get_result()->fetch_assoc();
+    return $res ? (string)$res['university_name'] : null;
+}
 function get_student_row(mysqli $conn, int $sid): ?array {
     $stmt = $conn->prepare('SELECT * FROM student WHERE student_id = ? LIMIT 1');
     $stmt->bind_param('i', $sid);
@@ -150,28 +162,39 @@ function get_student_row(mysqli $conn, int $sid): ?array {
 // ---- Matching logic ----
 function select_match(mysqli $conn, array $in): ?array {
     $uid = lookup_university_id($conn, $in['university_id'] ?? null, $in['university'] ?? null);
+    $dob = $in['dob'] ?? '';
+    $pass = $in['passport'] ?? '';
+    $phone = $in['phone_number'] ?? '';
+    $name = $in['fullname'] ?? '';
 
-    // Hard match: dob + passport + phone + university
-    if (!empty($in['dob']) && !empty($in['passport']) && !empty($in['phone_number']) && $uid) {
-        $stmt = $conn->prepare('SELECT * FROM student WHERE dob = ? AND passport = ? AND phone_number = ? AND university_id = ? LIMIT 1');
-        $stmt->bind_param('sssi', $in['dob'], $in['passport'], $in['phone_number'], $uid);
+    // 1) dob + passport + phone + university
+    if ($dob !== '' && $pass !== '' && $phone !== '' && $uid) {
+        $stmt = $conn->prepare('SELECT * FROM student WHERE dob=? AND passport=? AND phone_number=? AND university_id=? LIMIT 1');
+        $stmt->bind_param('sssi', $dob, $pass, $phone, $uid);
         $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        if ($row) return $row;
+        if ($row = $stmt->get_result()->fetch_assoc()) return $row;
     }
 
-    // Soft match: LOWER(fullname) + dob + at least 2 of {passport, phone, university}
-    if (empty($in['fullname']) || empty($in['dob'])) return null;
+    // 2) Fallback ONLY when DB has empty DOB: fullname + university AND (dob IS NULL OR dob='')
+    if ($name !== '' && $uid) {
+        $stmt = $conn->prepare('SELECT * FROM student WHERE LOWER(fullname)=? AND university_id=? AND (dob IS NULL OR dob="") LIMIT 1');
+        $stmt->bind_param('si', $name, $uid);
+        $stmt->execute();
+        if ($row = $stmt->get_result()->fetch_assoc()) return $row;
+    }
 
-    $stmt = $conn->prepare('SELECT * FROM student WHERE LOWER(fullname) = ? AND dob = ?');
-    $stmt->bind_param('ss', $in['fullname'], $in['dob']); // $in['fullname'] already lowercased
+    /// 3) Soft match: fullname + dob + at least 2 of {passport, phone, university}
+    if ($name === '' || $dob === '') return null;
+
+    $stmt = $conn->prepare('SELECT * FROM student WHERE LOWER(fullname)=? AND dob=?');
+    $stmt->bind_param('ss', $name, $dob);
     $stmt->execute();
     $res = $stmt->get_result();
 
     while ($row = $res->fetch_assoc()) {
         $score = 0;
-        if (!empty($in['passport']) && $row['passport'] === $in['passport']) $score++;
-        if (!empty($in['phone_number']) && $row['phone_number'] === $in['phone_number']) $score++;
+        if ($pass  !== '' && $row['passport'] === $pass) $score++;
+        if ($phone !== '' && $row['phone_number'] === $phone) $score++;
         if ($uid && (int)$row['university_id'] === $uid) $score++;
         if ($score >= 2) return $row;
     }
@@ -229,9 +252,8 @@ try {
             'university_id' => isset($body['university_id']) ? (string)$body['university_id'] : null,
             'university'    => trim((string)($body['university'] ?? '')),
         ];
-        if ($in['fullname']==='' || $in['dob']==='') fail('fullname and dob are required', 422);
+        if ($in['fullname']==='' || $in['university_id']==='') fail('fullname and university_id are required', 422);
 
-        // token context (optional here, included if present)
         $ctx = read_token_context($body);
 
         $conn->begin_transaction();
@@ -240,7 +262,7 @@ try {
             if ($row) {
                 $token = make_token((int)$row['student_id'], 3600, $SECRET, $ctx);
                 $conn->commit();
-                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($row)]);
+                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($conn, $row)]);
             }
             fail('student not found', 404);
         } catch (Throwable $e) {
@@ -259,9 +281,8 @@ try {
             'university_id' => isset($body['university_id']) ? (string)$body['university_id'] : null,
             'university'    => trim((string)($body['university'] ?? '')),
         ];
-        if ($in['fullname']==='' || $in['dob']==='') fail('fullname and dob are required', 422);
+        if ($in['fullname']==='' || $in['university_id']==='') fail('fullname and dob are required', 422);
 
-        // token context (optional here, included if present)
         $ctx = read_token_context($body);
 
         $conn->begin_transaction();
@@ -270,7 +291,7 @@ try {
             if ($row) {
                 $token = make_token((int)$row['student_id'], 3600, $SECRET, $ctx);
                 $conn->commit();
-                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($row)]);
+                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($conn, $row)]);
             }
 
             // Insert minimal record
@@ -290,7 +311,7 @@ try {
 
             $token = make_token($sid, 3600, $SECRET, $ctx);
             $conn->commit();
-            ok(['mode'=>'created','token'=>$token,'student'=>redact_student($row)]);
+            ok(['mode'=>'created','token'=>$token,'student'=>redact_student($conn, $row)]);
         } catch (Throwable $e) {
             $conn->rollback();
             error_log('check action error: '.$e->getMessage());
@@ -346,7 +367,7 @@ try {
 
             $row = get_student_row($conn, $sid);
             $conn->commit();
-            ok(['updated'=>true, 'student'=>redact_student($row)]);
+            ok(['updated'=>true, 'student'=>redact_student($conn, $row)]);
         } catch (mysqli_sql_exception $e) {
             $conn->rollback();
             error_log('edit action DB error: '.$e->Message());
