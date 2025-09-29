@@ -1,6 +1,14 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (preg_match('#^https://([a-z0-9-]+\.)*ppimalaysia\.id$#i', $origin)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header("Vary: Origin");
+} else {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'error'=>['message'=>'Origin not allowed']]);
+    exit;
+}
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
