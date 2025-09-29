@@ -100,7 +100,7 @@ function read_token_context(array $body): array {
     $width = isset($body['deviceScreenWidth']) ? (int)$body['deviceScreenWidth'] : null;
     $uaHdr = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $ua = isset($body['useragent']) && trim((string)$body['useragent']) !== '' ? (string)$body['useragent'] : $uaHdr;
-    $ugt = isset($body['user_generated_token']) ? (string)$body['user_generated_token'] : null;
+    $ugt = isset($body['ugt']) ? (string)$body['ugt'] : null;
     return ['w'=>$width, 'ua'=>$ua ?: null, 'ugt'=>$ugt];
 }
 
