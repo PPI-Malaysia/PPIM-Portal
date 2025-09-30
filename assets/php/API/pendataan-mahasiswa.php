@@ -51,44 +51,28 @@ function fail(string $msg, int $code=400, ?string $extra=null): void {
 }
 function b64url(string $s): string { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
 function b64urldec(string $s): string|false { return base64_decode(strtr($s, '-_', '+/')); }
-
-function make_token(int $student_id, int $ttl_seconds, string $secret, array $ctx): string {
-    $iat = time();
-    $exp = $iat + $ttl_seconds;
-    $c = array_filter([
-        'w'   => isset($ctx['w'])   ? (int)$ctx['w'] : null,
-        'ua'  => isset($ctx['ua'])  ? (string)$ctx['ua'] : null,
-        'ugt' => isset($ctx['ugt']) ? (string)$ctx['ugt'] : null,
-    ], static fn($v) => $v !== null);
-
-    $payload = json_encode(['sid'=>$student_id,'iat'=>$iat,'exp'=>$exp,'ctx'=>$c], JSON_UNESCAPED_SLASHES);
+function make_token(int $sid, int $ttl, string $secret, array $ctx): string {
+    if (!isset($ctx['w'], $ctx['ua'], $ctx['ugt'])) throw new InvalidArgumentException('w, ua, ugt required');
+    $iat = time(); 
+    $exp = $iat + $ttl;
+    $payload = json_encode(['sid'=>$sid,'iat'=>$iat,'exp'=>$exp,'ctx'=>['w'=>(int)$ctx['w'],'ua'=>(string)$ctx['ua'],'ugt'=>(string)$ctx['ugt']]], JSON_UNESCAPED_SLASHES);
     $sig = hash_hmac('sha256', $payload, $secret, true);
     return b64url($payload).'.'.b64url($sig);
 }
 function verify_token(string $token, string $secret, array $expectCtx): ?int {
     $parts = explode('.', $token, 2);
     if (count($parts) !== 2) return null;
-    [$p, $s] = $parts;
-    $payload = b64urldec($p);
+    [$p,$s] = $parts; $payload = b64urldec($p);
     $sig = b64urldec($s);
     if ($payload === false || $sig === false) return null;
     if (!hash_equals(hash_hmac('sha256', $payload, $secret, true), $sig)) return null;
-
     $data = json_decode($payload, true);
     if (!is_array($data) || !isset($data['sid'])) return null;
     if (isset($data['exp']) && time() > (int)$data['exp']) return null;
-
-    $ctx = $data['ctx'] ?? [];
-    if (is_array($ctx) && $ctx) {
-        $expected = [
-            'w'   => isset($expectCtx['w'])   ? (int)$expectCtx['w'] : null,
-            'ua'  => isset($expectCtx['ua'])  ? (string)$expectCtx['ua'] : null,
-            'ugt' => isset($expectCtx['ugt']) ? (string)$expectCtx['ugt'] : null,
-        ];
-        foreach ($ctx as $k => $v) {
-            if (!array_key_exists($k, $expected) || $expected[$k] !== $v) return null;
-        }
-    }
+    $ctx = $data['ctx'] ?? null;
+    if (!is_array($ctx) || !isset($ctx['w'], $ctx['ua'], $ctx['ugt'])) return null;
+    $exp = ['w'=>(int)($expectCtx['w'] ?? -1), 'ua'=>(string)($expectCtx['ua'] ?? ''), 'ugt'=>(string)($expectCtx['ugt'] ?? '')];
+    foreach (['w','ua','ugt'] as $k) if ($ctx[$k] !== $exp[$k]) return null;
     return (int)$data['sid'];
 }
 function bearer_token_or_body(array $body): string {
@@ -97,13 +81,11 @@ function bearer_token_or_body(array $body): string {
     return (string)($body['token'] ?? '');
 }
 function read_token_context(array $body): array {
-    $width = isset($body['dsw']) ? (int)$body['dsw'] : null;
-    $uaHdr = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $ua = isset($body['ua']) && trim((string)$body['ua']) !== '' ? (string)$body['ua'] : $uaHdr;
-    $ugt = isset($body['ugt']) ? (string)$body['ugt'] : null;
-    return ['w'=>$width, 'ua'=>$ua ?: null, 'ugt'=>$ugt];
+    if (!isset($body['w'], $body['ua'], $body['ugt'])) fail('Missing context: w, ua, ugt required', 422);
+    $w = (int)$body['w']; $ua = (string)$body['ua']; $ugt = (string)$body['ugt'];
+    if ($w <= 0 || $ua === '' || $ugt === '') fail('invalid w, ua, or ugt', 422);
+    return ['w'=>$w,'ua'=>$ua,'ugt'=>$ugt];
 }
-
 // ---- Redaction / Lookup / Queries ----
 function redact_student(mysqli $conn, array $r): array {
     $passport = $r['passport'];
@@ -130,7 +112,7 @@ function redact_student(mysqli $conn, array $r): array {
         'degree' => $r['degree'] ?? null,
         'level_of_qualification_id' => $r['level_of_qualification_id'] !== null ? (int)$r['level_of_qualification_id'] : null,
         'expected_graduate' => $r['expected_graduate'],
-        'address'    => $r['address'] ?? null,
+        'address'    => $addr,
         'postcode_id'=> $r['postcode_id'] ?? null,
         'status_id'  => $r['status_id'] !== null ? (int)$r['status_id'] : null,
         'ppi' => $ppi,
@@ -154,7 +136,7 @@ function lookup_university(mysqli $conn, ?int $university_id): ?string {
     $res = $stmt->get_result()->fetch_assoc();
     return $res ? (string)$res['university_name'] : null;
 }
-function lookup_ppim_record(mysqli $conn, ?int $student_id) : ?string {
+function lookup_ppim_record(mysqli $conn, ?int $student_id) : array {
     if (!$student_id) return json_encode([]);
     $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppim WHERE student_id = ? ORDER BY COALESCE(end_year,9999) DESC');
     $stmt->bind_param('i', $student_id);
@@ -172,9 +154,9 @@ function lookup_ppim_record(mysqli $conn, ?int $student_id) : ?string {
         ];
     }
     $stmt->close();
-    return json_encode($out, JSON_UNESCAPED_UNICODE);
+    return $out;
 }
-function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) : ?string {
+function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) : array {
     if (!$student_id) return json_encode([]);
     $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppi_campus WHERE student_id = ? AND university_id = ? ORDER BY COALESCE(end_year,9999) DESC');
     $stmt->bind_param('ii', $student_id, $university_id);
@@ -188,11 +170,11 @@ function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) 
             'department'  => $r['department'],
             'position'    => $r['position'],
             'description' => $r['description'],
-            'is_active'   => (bool)$r['is_active'],
+            'is_active'   => (int)$r['is_active'],
         ];
     }
     $stmt->close();
-    return json_encode($out, JSON_UNESCAPED_UNICODE);
+    return $out;
 }
 function get_student_row(mysqli $conn, int $sid): ?array {
     $stmt = $conn->prepare('SELECT * FROM student WHERE student_id = ? LIMIT 1');
@@ -225,7 +207,7 @@ function select_match(mysqli $conn, array $in): ?array {
         if ($row = $stmt->get_result()->fetch_assoc()) return $row;
     }
 
-    /// 3) Soft match: fullname + dob + at least 2 of {passport, phone, university}
+    /// 3) Soft match: fullname + dob + at least 2 of {passport, phone, university} is correct
     if ($name === '' || $dob === '') return null;
 
     $stmt = $conn->prepare('SELECT * FROM student WHERE LOWER(fullname)=? AND dob=?');
@@ -242,10 +224,9 @@ function select_match(mysqli $conn, array $in): ?array {
     }
     return null;
 }
-
 function allowed_student_fields(): array {
     return [
-        'fullname','university_id','dob','email','passport','phone_number',
+        'fullname','university_id','dob','email','passport','phone_number','status_id',
         'postcode_id','address','expected_graduate','degree','level_of_qualification_id'
     ];
 }
@@ -295,7 +276,7 @@ try {
             'university'    => trim((string)($body['university'] ?? '')),
         ];
         if ($in['fullname']==='' || $in['university_id']==='') fail('fullname and university_id are required', 422);
-
+        
         $ctx = read_token_context($body);
 
         $conn->begin_transaction();
@@ -313,59 +294,30 @@ try {
             fail('Database error', 409);
         }
     }
-    elseif ($action === 'checkorcrete') {
-        // normalize
-        $in = [
-            'fullname'      => norm_fullname($body['fullname'] ?? ''),
-            'dob'           => norm_dob($body['dob'] ?? ''),        // YYYY-MM-DD
-            'passport'      => norm_passport($body['passport'] ?? ''),
-            'phone_number'  => norm_phone($body['phone_number'] ?? ''),
-            'university_id' => isset($body['university_id']) ? (string)$body['university_id'] : null,
-            'university'    => trim((string)($body['university'] ?? '')),
-        ];
-        if ($in['fullname']==='' || $in['university_id']==='') fail('fullname and dob are required', 422);
-
+    elseif ($action === 'get') {
         $ctx = read_token_context($body);
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
+        if (!$sid) fail('Invalid token', 401);
 
         $conn->begin_transaction();
         try {
-            $row = select_match($conn, $in);
-            if ($row) {
-                $token = make_token((int)$row['student_id'], 3600, $SECRET, $ctx);
-                $conn->commit();
-                ok(['mode'=>'existing','token'=>$token,'student'=>redact_student($conn, $row)]);
-            }
-
-            // Insert minimal record
-            $uid = lookup_university_id($conn, $in['university_id'], $in['university']);
-            if ($uid === null) {
-                $stmt = $conn->prepare('INSERT INTO student (fullname,dob,passport,phone_number) VALUES (?,?,?,?)');
-                $stmt->bind_param('ssss', $in['fullname'], $in['dob'], $in['passport'], $in['phone_number']);
-            } else {
-                $stmt = $conn->prepare('INSERT INTO student (fullname,dob,passport,phone_number,university_id) VALUES (?,?,?,?,?)');
-                $stmt->bind_param('ssssi', $in['fullname'], $in['dob'], $in['passport'], $in['phone_number'], $uid);
-            }
-            $stmt->execute();
-            $sid = (int)$conn->insert_id;
-
             $row = get_student_row($conn, $sid);
-            if (!$row) { throw new Exception('Post-insert fetch failed'); }
+            if (!$row) fail('student not found', 404);
 
-            $token = make_token($sid, 3600, $SECRET, $ctx);
+            $student = redact_student($conn, $row);
+
             $conn->commit();
-            ok(['mode'=>'created','token'=>$token,'student'=>redact_student($conn, $row)]);
+            ok(['student' => $student]);
         } catch (Throwable $e) {
             $conn->rollback();
-            error_log('check action error: '.$e->getMessage());
+            error_log('get action error: '.$e->getMessage());
             fail('Database error', 409);
         }
     }
+
     elseif ($action === 'edit') {
         $ctx = read_token_context($body);
-        if ($ctx['w'] === null || $ctx['ua'] === null || $ctx['ugt'] === null) fail('Missing token context', 401);
-
-        $token = bearer_token_or_body($body);
-        $sid = $token ? verify_token($token, $SECRET, $ctx) : null;
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
         if (!$sid) fail('Invalid token', 401);
 
         // university by name
@@ -412,16 +364,13 @@ try {
             ok(['updated'=>true, 'student'=>redact_student($conn, $row)]);
         } catch (mysqli_sql_exception $e) {
             $conn->rollback();
-            error_log('edit action DB error: '.$e->Message());
+            error_log('edit action DB error: '.$e->getMessage());
             fail('Database error', 409);
         }
     }
     elseif ($action === 'add') {
         $ctx = read_token_context($body);
-        if ($ctx['w'] === null || $ctx['ua'] === null || $ctx['ugt'] === null) fail('Missing token context', 401);
-
-        $token = bearer_token_or_body($body);
-        $sid = $token ? verify_token($token, $SECRET, $ctx) : null;
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
         if (!$sid) fail('Invalid token', 401);
 
         $resource = strtolower(trim((string)($body['resource'] ?? '')));
@@ -463,7 +412,7 @@ try {
         }
     }
     else {
-        fail('Unknown action. Use one of: check, edit, add', 400);
+        fail('Unknown action. Use one of: check, get, edit, add', 400);
     }
 }
 catch (Throwable $e) {
