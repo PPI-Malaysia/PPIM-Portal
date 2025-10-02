@@ -265,6 +265,7 @@ try {
     $body = json_input();
     $action = strtolower(trim((string)($body['action'] ?? '')));
 
+    //get student data by student information
     if ($action === 'check') {
         // normalize
         $in = [
@@ -294,6 +295,7 @@ try {
             fail('Database error', 409);
         }
     }
+    //get student data by token
     elseif ($action === 'get') {
         $ctx = read_token_context($body);
         $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
@@ -315,38 +317,74 @@ try {
         }
     }
 
+    //edit student data by token
     elseif ($action === 'edit') {
+        // verify who is editing
         $ctx = read_token_context($body);
         $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
         if (!$sid) fail('Invalid token', 401);
 
-        // university by name
+        // allow resolving university by name -> id
         if (array_key_exists('university', $body)) {
             $uid = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
             $body['university_id'] = $uid;
         }
 
-        // normalize if present
-        if (array_key_exists('fullname', $body))      $body['fullname'] = norm_fullname($body['fullname']);
-        if (array_key_exists('dob', $body))           $body['dob'] = norm_dob($body['dob']);
-        if (array_key_exists('passport', $body))      $body['passport'] = norm_passport($body['passport']);
-        if (array_key_exists('phone_number', $body))  $body['phone_number'] = norm_phone($body['phone_number']);
-        if (array_key_exists('email', $body))         $body['email'] = norm_email($body['email']);
+        // whitelist of updatable columns in student table
+        $allowed = [
+            'fullname', 'university_id', 'dob', 'email', 'passport', 'phone_number',
+            'status_id', 'postcode_id', 'address', 'expected_graduate', 'degree',
+            'level_of_qualification_id'
+        ];
 
-        $fields = allowed_student_fields();
+        // per-field normalizers
+        $norm = [
+            'fullname'                   => fn($v) => norm_fullname($v),
+            'university_id'             => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
+            'dob'                        => fn($v) => norm_dob($v),
+            'email'                      => fn($v) => array_key_exists('email', $body) ? norm_email($v) : null,
+            'passport'                   => fn($v) => norm_passport($v),
+            'phone_number'               => fn($v) => norm_phone($v),
+            'status_id'                  => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
+            'postcode_id'                => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
+            'address'                    => fn($v) => trim((string)$v),
+            'expected_graduate'          => fn($v) => norm_dob($v),
+            'degree'                     => fn($v) => ($v === '' ? null : trim((string)$v)),
+            'level_of_qualification_id'  => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
+        ];
+
+        // MySQLi bind types per field
+        $typesMap = [
+            'fullname'                   => 's',
+            'university_id'             => 'i',
+            'dob'                        => 's',
+            'email'                      => 's',
+            'passport'                   => 's',
+            'phone_number'               => 's',
+            'status_id'                  => 'i',
+            'postcode_id'                => 'i',
+            'address'                    => 's',
+                'expected_graduate'          => 's',
+                'degree'                     => 's',
+                'level_of_qualification_id'  => 'i',
+        ];
+
+        // collect updates
         $set = [];
         $vals = [];
         $types = '';
 
-        foreach ($fields as $f) {
+        foreach ($allowed as $f) {
             if (array_key_exists($f, $body)) {
-                $set[] = "$f = ?";
                 $val = $body[$f];
+                $val = $norm[$f]($val);
                 if ($val === '') $val = null;
+                $set[]  = "$f = ?";
                 $vals[] = $val;
-                $types .= in_array($f, ['university_id','level_of_qualification_id','postcode_id','status_id'], true) ? 'i' : 's';
+                $types .= $typesMap[$f];
             }
         }
+
         if (!$set) fail('No updatable fields provided', 422);
 
         $sql = 'UPDATE student SET '.implode(',', $set).' WHERE student_id = ?';
@@ -361,58 +399,119 @@ try {
 
             $row = get_student_row($conn, $sid);
             $conn->commit();
-            ok(['updated'=>true, 'student'=>redact_student($conn, $row)]);
+
+            ok(['updated' => true, 'student' => redact_student($conn, $row)]);
         } catch (mysqli_sql_exception $e) {
             $conn->rollback();
             error_log('edit action DB error: '.$e->getMessage());
             fail('Database error', 409);
         }
     }
+    //add completed student data
     elseif ($action === 'add') {
+        // no verify; only context required to mint token
         $ctx = read_token_context($body);
-        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
-        if (!$sid) fail('Invalid token', 401);
 
-        $resource = strtolower(trim((string)($body['resource'] ?? '')));
-        if (!in_array($resource, ['ppim','ppi_campus'], true)) fail('Unsupported resource', 422);
+        // resolve university id from id or name
+        $uid = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
+        if (!$uid) fail('university_id or valid university name required', 422);
+
+        // normalize
+        $fullname    = norm_fullname($body['fullname'] ?? '');
+        $dob         = norm_dob($body['dob'] ?? '');
+        $email       = array_key_exists('email', $body) ? norm_email($body['email']) : null;
+        $passport    = norm_passport($body['passport'] ?? '');
+        $phone       = norm_phone($body['phone_number'] ?? '');
+        $address     = trim((string)($body['address'] ?? ''));
+        $expected    = norm_dob($body['education_graduation'] ?? '');
+        $degree      = isset($body['education_programme']) ? trim((string)$body['education_programme']) : null;
+        $level_id    = isset($body['education_level']) ? (int)$body['education_level'] : null; // level_of_qualification_id
+        $postcode_id = isset($body['postcode_id']) ? (int)$body['postcode_id'] : null;
+
+        if ($fullname === '' || $dob === '' || $passport === '' || $phone === '')
+            fail('fullname, dob, passport, phone_number are required', 422);
+
+        // status: 1=graduated, 0=ongoing (adjust to your enum)
+        $status_id = isset($body['status_id'])
+            ? (int)$body['status_id']
+            : (($expected !== '' && $expected < date('Y-m-d')) ? 1 : 0);
+
+        $is_active = 1;
 
         $conn->begin_transaction();
         try {
-            if ($resource === 'ppim') {
-                $start_year = (int)($body['start_year'] ?? 0);
-                $end_year   = isset($body['end_year']) ? (int)$body['end_year'] : null;
-                $department = trim((string)($body['department'] ?? ''));
-                $position   = trim((string)($body['position'] ?? ''));
-                $desc       = trim((string)($body['description'] ?? ''));
+            // insert student
+            $sql = 'INSERT INTO student
+                (fullname, university_id, dob, email, passport, phone_number, postcode_id, address,
+                expected_graduate, degree, level_of_qualification_id, status_id, is_active)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)';
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param(
+                'sisssssisssiii',
+                $fullname, $uid, $dob, $email, $passport, $phone, $postcode_id, $address,
+                $expected, $degree, $level_id, $status_id, $is_active
+            );
+            $stmt->execute();
+            $new_sid = (int)$conn->insert_id;
 
-                $stmt = $conn->prepare('INSERT INTO ppim (student_id,start_year,end_year,department,position,description) VALUES (?,?,?,?,?,?)');
-                $stmt->bind_param('iiisss', $sid, $start_year, $end_year, $department, $position, $desc);
-                $stmt->execute();
-            } else {
-                $uid = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
-                if (!$uid) { throw new Exception('university_id or valid university name required'); }
-
-                $start_year = (int)($body['start_year'] ?? 0);
-                $end_year   = isset($body['end_year']) ? (int)$body['end_year'] : null;
-                $department = trim((string)($body['department'] ?? ''));
-                $position   = trim((string)($body['position'] ?? ''));
-                $desc       = trim((string)($body['description'] ?? ''));
-
-                $stmt = $conn->prepare('INSERT INTO ppi_campus (student_id,start_year,end_year,university_id,department,position,description) VALUES (?,?,?,?,?,?,?)');
-                $stmt->bind_param('iiiisss', $sid, $start_year, $end_year, $uid, $department, $position, $desc);
+            // optional PPIM
+            if (!empty($body['ppim']) && is_array($body['ppim'])) {
+                $p = $body['ppim'];
+                $stmt = $conn->prepare('INSERT INTO ppim
+                    (student_id,start_year,end_year,department,position,description)
+                    VALUES (?,?,?,?,?,?)');
+                $ppim_start = (int)($p['startYear'] ?? 0);
+                $ppim_end   = isset($p['endYear']) ? (int)$p['endYear'] : null;
+                $ppim_dept  = trim((string)($p['department'] ?? ''));
+                $ppim_pos   = trim((string)($p['position'] ?? ''));
+                $ppim_desc  = trim((string)($p['additionalInfo'] ?? ''));
+                $stmt->bind_param('iiisss', $new_sid, $ppim_start, $ppim_end, $ppim_dept, $ppim_pos, $ppim_desc);
                 $stmt->execute();
             }
 
+            // optional PPI campus
+            if (!empty($body['ppi_campus']) && is_array($body['ppi_campus'])) {
+                $p = $body['ppi_campus'];
+                $stmt = $conn->prepare('INSERT INTO ppi_campus
+                    (student_id,start_year,end_year,university_id,department,position,description)
+                    VALUES (?,?,?,?,?,?,?)');
+                $pc_start = (int)($p['startYear'] ?? 0);
+                $pc_end   = isset($p['endYear']) ? (int)$p['endYear'] : null;
+                $pc_dept  = trim((string)($p['department'] ?? ''));
+                $pc_pos   = trim((string)($p['position'] ?? ''));
+                $pc_desc  = trim((string)($p['additionalInfo'] ?? ''));
+                $stmt->bind_param('iiiisss', $new_sid, $pc_start, $pc_end, $uid, $pc_dept, $pc_pos, $pc_desc);
+                $stmt->execute();
+            }
+
+            // load row and mint token for the new student
+            $row   = get_student_row($conn, $new_sid);
+            $token = make_token($new_sid, 3600, $SECRET, $ctx);
+
             $conn->commit();
-            ok(['inserted'=>true, 'resource'=>$resource]);
+            ok([
+                'inserted' => true,
+                'token'    => $token,
+                'student'  => redact_student($conn, $row)
+            ]);
         } catch (Throwable $e) {
             $conn->rollback();
             error_log('add action error: '.$e->getMessage());
             fail('Database error', 409);
         }
     }
+    elseif ($action === 'addPPI') {
+
+    }
+    elseif ($action === 'delPPI') {
+
+    }
+    elseif ($action === 'editPPI') {
+
+    }
+
     else {
-        fail('Unknown action. Use one of: check, get, edit, add', 400);
+        fail('Unknown action. Use one of: check, get, edit, add, addPPI, delPPI, editPPI', 400);
     }
 }
 catch (Throwable $e) {
