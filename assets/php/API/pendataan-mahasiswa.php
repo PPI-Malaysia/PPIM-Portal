@@ -426,7 +426,7 @@ try {
         $expected    = norm_dob($body['education_graduation'] ?? '');
         $degree      = isset($body['education_programme']) ? trim((string)$body['education_programme']) : null;
         $level_id    = isset($body['education_level']) ? (int)$body['education_level'] : null; // level_of_qualification_id
-        $postcode_id = isset($body['postcode_id']) ? (int)$body['postcode_id'] : null;
+        $postcode_id = isset($body['postcode_id']) ? (string)$body['postcode_id'] : null;
 
         if ($fullname === '' || $dob === '' || $passport === '' || $phone === '')
             fail('fullname, dob, passport, phone_number are required', 422);
