@@ -413,7 +413,7 @@ try {
         $ctx = read_token_context($body);
 
         // resolve university id from id or name
-        $uid = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
+        $uid = lookup_university_id($conn, (string)$body['university_id'] ?? null, $body['university'] ?? null);
         if (!$uid) fail('university_id or valid university name required', 422);
 
         // normalize
