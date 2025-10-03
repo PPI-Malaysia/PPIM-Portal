@@ -425,7 +425,7 @@ try {
         $address     = trim((string)($body['address'] ?? ''));
         $expected    = norm_dob($body['education_graduation'] ?? '');
         $degree      = isset($body['education_programme']) ? trim((string)$body['education_programme']) : null;
-        $level_id    = isset($body['education_level']) ? (int)$body['education_level'] : null; // level_of_qualification_id
+        $level_id    = isset($body['education_level']) ? (int)$body['education_level'] : null;
         $postcode_id = isset($body['postcode_id']) ? (string)$body['postcode_id'] : null;
 
         if ($fullname === '' || $dob === '' || $passport === '' || $phone === '')
@@ -447,7 +447,7 @@ try {
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)';
             $stmt = $conn->prepare($sql);
             $stmt->bind_param(
-                'sisssssisssiii',
+                'sissssssssiii',
                 $fullname, $uid, $dob, $email, $passport, $phone, $postcode_id, $address,
                 $expected, $degree, $level_id, $status_id, $is_active
             );
