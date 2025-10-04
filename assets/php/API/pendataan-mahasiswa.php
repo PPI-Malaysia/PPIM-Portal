@@ -95,7 +95,7 @@ function redact_student(mysqli $conn, array $r): array {
     $phone = $r['phone_number'];
     $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[2])) . $m[3], $phone) : null;
     $addr = $r['address'];
-    if ($addr) $addr = mb_strlen($addr) > 12 ? (mb_substr($addr,0,12).'…') : $addr;
+    if ($addr) $addr = mb_substr($addr, 0, 12) . str_repeat('*', max(0, mb_strlen($addr) - 12));
     $uid = $r['university_id'] !== null ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
     $sid = $r['student_id'];
@@ -177,7 +177,14 @@ function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) 
     return $out;
 }
 function get_student_row(mysqli $conn, int $sid): ?array {
-    $stmt = $conn->prepare('SELECT * FROM student WHERE student_id = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT university_id FROM student WHERE student_id = ? LIMIT 1');
+    $stmt->bind_param('i', $sid);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function get_student_uni(mysqli $conn, int $sid): ?array {
+    $stmt = $conn->prepare('SELECT  FROM student WHERE student_id = ? LIMIT 1');
     $stmt->bind_param('i', $sid);
     $stmt->execute();
     return $stmt->get_result()->fetch_assoc() ?: null;
@@ -504,13 +511,216 @@ try {
         }
     }
     elseif ($action === 'addPPI') {
+        // mandatory
+        $ctx = read_token_context($body);
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
+        if (!$sid) fail('Invalid token', 401);
 
+        // get type: ppim | ppi_campus
+        $type = strtolower(trim((string)($body['type'] ?? '')));
+        if ($type !== 'ppim' && $type !== 'ppi_campus') fail('type must be ppim or ppi_campus', 422);
+
+        // normalize inputs
+        $startYear = (int)($body['start_year'] ?? 0);
+        $endYear   = isset($body['end_year']) && $body['end_year'] !== '' ? (int)$body['end_year'] : null;
+        $dept      = trim((string)($body['department'] ?? ''));
+        $pos       = trim((string)($body['position'] ?? ''));
+        $desc      = trim((string)($body['additionalInfo'] ?? ''));
+
+        // check validation
+        if ($startYear < 1900 || $startYear > 2100) fail('start_year invalid', 422);
+        if ($endYear !== null && ($endYear < 1900 || $endYear > 2100)) fail('end_year invalid', 422);
+        if ($endYear !== null && $endYear < $startYear) fail('end_year < start_year', 422);
+
+        // if campus entry, resolve university_id
+        $ppiUniId = null;
+        if ($type === 'ppi_campus') {
+            $ppiUniId = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
+            if (!$ppiUniId) {
+                // fallback to student's own university_id
+                $sr = get_student_uni($conn, $sid);
+                if (!$sr) fail('student not found', 404);
+                $ppiUniId = (int)($sr['university_id'] ?? 0);
+            }
+            if (!$ppiUniId) fail('university_id required for ppi_campus', 422);
+        }
+        $conn->begin_transaction();
+        try {
+            if ($type === 'ppim') {
+                // ppim(student_id,start_year,end_year,department,position,description,is_active)
+                $stmt = $conn->prepare(
+                    'INSERT INTO ppim (student_id,start_year,end_year,department,position,description)
+                    VALUES (?,?,?,?,?,?)'
+                );
+                $stmt->bind_param('iiisss', $sid, $startYear, $endYear, $dept, $pos, $desc);
+                $stmt->execute();
+            } else {
+                // ppi_campus(student_id,university_id,start_year,end_year,department,position,description,is_active)
+                $stmt = $conn->prepare(
+                    'INSERT INTO ppi_campus (student_id,university_id,start_year,end_year,department,position,description)
+                    VALUES (?,?,?,?,?,?,?)'
+                );
+                $stmt->bind_param('iiiisss', $sid, $ppiUniId, $startYear, $endYear, $dept, $pos, $desc);
+                $stmt->execute();
+            }
+
+            $row = get_student_row($conn, $sid);
+            $conn->commit();
+
+            ok([
+                'added'   => true,
+                'type'    => $type,
+                'student' => redact_student($conn, $row),
+            ]);
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('addPPI error: '.$e->getMessage());
+            fail('Database error', 409);
+        }
     }
     elseif ($action === 'delPPI') {
+        // auth
+        $ctx = read_token_context($body);
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
+        if (!$sid) fail('Invalid token', 401);
 
+        // type
+        $type = strtolower(trim((string)($body['type'] ?? '')));
+        if ($type !== 'ppim' && $type !== 'ppi_campus') fail('type must be ppim or ppi_campus', 422);
+
+        // id per type
+        if ($type === 'ppim') {
+            $id = (int)($body['ppim_id'] ?? 0);
+            if ($id <= 0) fail('ppi_id required', 422);
+            $sql  = 'DELETE FROM ppim WHERE ppim_id = ? AND student_id = ? LIMIT 1';
+            $bind = fn($stmt) => $stmt->bind_param('ii', $id, $sid);
+        } else {
+            $id = (int)($body['ppi_campus_id'] ?? 0);
+            if ($id <= 0) fail('pp_campus_id required', 422);
+            $sql  = 'DELETE FROM ppi_campus WHERE ppi_campus_id = ? AND student_id = ? LIMIT 1';
+            $bind = fn($stmt) => $stmt->bind_param('ii', $id, $sid);
+        }
+
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare($sql);
+            $bind($stmt);
+            $stmt->execute();
+
+            if ($stmt->affected_rows !== 1) {
+                $conn->rollback();
+                fail('ppi record not found', 404);
+            }
+
+            $row = get_student_row($conn, $sid);
+            $conn->commit();
+
+            ok([
+                'deleted' => true,
+                'type'    => $type,
+                'id'      => $id,
+                'student' => redact_student($conn, $row),
+            ]);
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('delPPI error: '.$e->getMessage());
+            fail('Database error', 409);
+        }
     }
-    elseif ($action === 'editPPI') {
 
+    elseif ($action === 'editPPI') {
+        // auth
+        $ctx = read_token_context($body);
+        $sid = verify_token(bearer_token_or_body($body), $SECRET, $ctx);
+        if (!$sid) fail('Invalid token', 401);
+
+        // type
+        $type = strtolower(trim((string)($body['type'] ?? '')));
+        if ($type !== 'ppim' && $type !== 'ppi_campus') fail('type must be ppim or ppi_campus', 422);
+
+        // pk
+        if ($type === 'ppim') {
+            $pk = (int)($body['ppi_id'] ?? $body['ppim_id'] ?? $body['id'] ?? 0);
+            if ($pk <= 0) fail('ppi_id required', 422);
+            $table = 'ppim';
+            $pkcol = 'ppim_id';
+        } else {
+            $pk = (int)($body['pp_campus_id'] ?? $body['ppi_campus_id'] ?? $body['id'] ?? 0);
+            if ($pk <= 0) fail('pp_campus_id required', 422);
+            $table = 'ppi_campus';
+            $pkcol = 'ppi_campus_id';
+        }
+
+        // require all fields for full update
+        $startYear = (int)($body['start_year'] ?? 0);
+        $endYear   = array_key_exists('end_year', $body) && $body['end_year'] !== '' ? (int)$body['end_year'] : null;
+        $dept      = trim((string)($body['department'] ?? ''));
+        $pos       = trim((string)($body['position'] ?? ''));
+        $desc      = trim((string)($body['description'] ?? $body['additionalInfo'] ?? ''));
+        $isActive  = isset($body['is_active']) ? (int)((bool)$body['is_active']) : 1;
+
+        if ($startYear < 1900 || $startYear > 2100) fail('start_year invalid', 422);
+        if ($endYear !== null && ($endYear < 1900 || $endYear > 2100)) fail('end_year invalid', 422);
+        if ($endYear !== null && $endYear < $startYear) fail('end_year < start_year', 422);
+        if ($dept === '' || $pos === '') fail('department and position are required', 422);
+
+        // campus must provide university
+        $ppiUniId = null;
+        if ($type === 'ppi_campus') {
+            $ppiUniId = lookup_university_id($conn, $body['university_id'] ?? null, $body['university'] ?? null);
+            if (!$ppiUniId) fail('university_id or valid university required', 422);
+        }
+
+        $conn->begin_transaction();
+        try {
+            // ensure ownership
+            $chk = $conn->prepare("SELECT 1 FROM {$table} WHERE {$pkcol} = ? AND student_id = ? LIMIT 1");
+            $chk->bind_param('ii', $pk, $sid);
+            $chk->execute();
+            if (!$chk->get_result()->fetch_row()) {
+                $conn->rollback();
+                fail('ppi record not found', 404);
+            }
+
+            if ($type === 'ppim') {
+                // update all columns for ppim
+                $sql = 'UPDATE ppim
+                        SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ?
+                        WHERE ppim_id = ? AND student_id = ? LIMIT 1';
+                // types: i i s s s i i i  (NULL ok for end_year with 'i')
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('iisssiii', $startYear, $endYear, $dept, $pos, $desc, $isActive, $pk, $sid);
+                $stmt->execute();
+            } else {
+                // update all columns for ppi_campus
+                $sql = 'UPDATE ppi_campus
+                        SET university_id = ?, start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ?
+                        WHERE ppi_campus_id = ? AND student_id = ? LIMIT 1';
+                // types: i i i s s s i i i
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('iiisssiii', $ppiUniId, $startYear, $endYear, $dept, $pos, $desc, $isActive, $pk, $sid);
+                $stmt->execute();
+            }
+
+            if ($stmt->affected_rows < 0) {
+                $conn->rollback();
+                fail('Database error', 409);
+            }
+
+            $row = get_student_row($conn, $sid);
+            $conn->commit();
+
+            ok([
+                'updated' => true,
+                'type'    => $type,
+                'id'      => $pk,
+                'student' => redact_student($conn, $row),
+            ]);
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('editPPI error: '.$e->getMessage());
+            fail('Database error', 409);
+        }
     }
 
     else {
