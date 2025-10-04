@@ -190,11 +190,12 @@ function select_match(mysqli $conn, array $in): ?array {
     $pass = $in['passport'] ?? '';
     $phone = $in['phone_number'] ?? '';
     $name = $in['fullname'] ?? '';
+    $email = $in['email'] ?? '';
 
-    // 1) dob + passport + phone + university
+    // 1) dob + passport + phone + university + email
     if ($dob !== '' && $pass !== '' && $phone !== '' && $uid) {
-        $stmt = $conn->prepare('SELECT * FROM student WHERE dob=? AND passport=? AND phone_number=? AND university_id=? LIMIT 1');
-        $stmt->bind_param('sssi', $dob, $pass, $phone, $uid);
+        $stmt = $conn->prepare('SELECT * FROM student WHERE dob=? AND passport=? AND phone_number=? AND university_id=? AND email=? LIMIT 1');
+        $stmt->bind_param('sssis', $dob, $pass, $phone, $uid, $email);
         $stmt->execute();
         if ($row = $stmt->get_result()->fetch_assoc()) return $row;
     }
@@ -207,7 +208,7 @@ function select_match(mysqli $conn, array $in): ?array {
         if ($row = $stmt->get_result()->fetch_assoc()) return $row;
     }
 
-    /// 3) Soft match: fullname + dob + at least 2 of {passport, phone, university} is correct
+    /// 3) Soft match: fullname + dob + at least 2 of {passport, phone, university, email} is correct
     if ($name === '' || $dob === '') return null;
 
     $stmt = $conn->prepare('SELECT * FROM student WHERE LOWER(fullname)=? AND dob=?');
@@ -218,6 +219,7 @@ function select_match(mysqli $conn, array $in): ?array {
     while ($row = $res->fetch_assoc()) {
         $score = 0;
         if ($pass  !== '' && $row['passport'] === $pass) $score++;
+        if ($email !== '' && $row['email'] === $email) $score++;
         if ($phone !== '' && $row['phone_number'] === $phone) $score++;
         if ($uid && (int)$row['university_id'] === $uid) $score++;
         if ($score >= 2) return $row;
@@ -275,6 +277,7 @@ try {
             'phone_number'  => norm_phone($body['phone_number'] ?? ''),
             'university_id' => isset($body['university_id']) ? (string)$body['university_id'] : null,
             'university'    => trim((string)($body['university'] ?? '')),
+            'email'         => norm_email($body['email'] ?? ''),
         ];
         if ($in['fullname']==='' || $in['university_id']==='') fail('fullname and university_id are required', 422);
         
