@@ -145,6 +145,7 @@ function lookup_ppim_record(mysqli $conn, ?int $student_id) : array {
     $out = [];
     while ($r = $res->fetch_assoc()) {
         $out[] = [
+            'ppim_id' => (int)$r['ppim_id'],
             'start_year'  => (int)$r['start_year'],
             'end_year'    => isset($r['end_year']) ? (int)$r['end_year'] : null,
             'department'  => $r['department'],
@@ -165,12 +166,13 @@ function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) 
     $out = [];
     while ($r = $res->fetch_assoc()) {
         $out[] = [
-            'start_year'  => (int)$r['start_year'],
-            'end_year'    => isset($r['end_year']) ? (int)$r['end_year'] : null,
-            'department'  => $r['department'],
-            'position'    => $r['position'],
-            'description' => $r['description'],
-            'is_active'   => (int)$r['is_active'],
+            'ppi_campus_id' => (int)$r['ppi_campus_id'],
+            'start_year'    => (int)$r['start_year'],
+            'end_year'      => isset($r['end_year']) ? (int)$r['end_year'] : null,
+            'department'    => $r['department'],
+            'position'      => $r['position'],
+            'description'   => $r['description'],
+            'is_active'     => (int)$r['is_active'],
         ];
     }
     $stmt->close();
