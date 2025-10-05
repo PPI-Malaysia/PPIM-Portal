@@ -96,11 +96,11 @@ function redact_student(mysqli $conn, array $r): array {
     $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[2])) . $m[3], $phone) : null;
     $addr = $r['address'];
     if ($addr) $addr = mb_substr($addr, 0, 12) . str_repeat('*', max(0, mb_strlen($addr) - 12));
-    $uid = $r['university_id'] !== null ? (int)$r['university_id'] : null;
+    $uid = isset($r['university_id']) ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
-    $sid = $r['student_id'];
-    $ppi = lookup_ppi_record($conn, $sid, $uid);
-    $ppim = lookup_ppim_record($conn, $sid);
+    $sid = isset($r['student_id']) ? (int)$r['student_id'] : null;
+    $ppi = $sid ? lookup_ppi_record($conn, $sid, $uid) : [],
+    $ppim = $sid ? lookup_ppim_record($conn, $sid) : [],
     return [
         'fullname'   => $r['fullname'],
         'dob'        => $r['dob'],
@@ -110,11 +110,11 @@ function redact_student(mysqli $conn, array $r): array {
         'university_id' => $uid,
         'university' => $uname,
         'degree' => $r['degree'] ?? null,
-        'level_of_qualification_id' => $r['level_of_qualification_id'] !== null ? (int)$r['level_of_qualification_id'] : null,
-        'expected_graduate' => $r['expected_graduate'],
+        'level_of_qualification_id' => isset($r['level_of_qualification_id']) ? (int)$r['level_of_qualification_id'] : null,
+        'expected_graduate' => $r['expected_graduate'] ?? null,
         'address'    => $addr,
         'postcode_id'=> $r['postcode_id'] ?? null,
-        'status_id'  => $r['status_id'] !== null ? (int)$r['status_id'] : null,
+        'status_id'  => isset($r['status_id']) ? (int)$r['status_id'] : null,
         'ppi' => $ppi,
         'ppim' => $ppim
     ];
@@ -137,41 +137,63 @@ function lookup_university(mysqli $conn, ?int $university_id): ?string {
     return $res ? (string)$res['university_name'] : null;
 }
 function lookup_ppim_record(mysqli $conn, ?int $student_id) : array {
-    if (!$student_id) return json_encode([]);
-    $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppim WHERE student_id = ? ORDER BY COALESCE(end_year,9999) DESC');
+    if (!$student_id) return [];
+    $stmt = $conn->prepare(
+        'SELECT ppim_id, start_year, end_year, department, position, description, is_active
+         FROM ppim
+         WHERE student_id = ?
+         ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppim_id DESC'
+    );
     $stmt->bind_param('i', $student_id);
     $stmt->execute();
     $res = $stmt->get_result();
     $out = [];
     while ($r = $res->fetch_assoc()) {
         $out[] = [
-            'ppim_id' => (int)$r['ppim_id'],
-            'start_year'  => (int)$r['start_year'],
-            'end_year'    => isset($r['end_year']) ? (int)$r['end_year'] : null,
-            'department'  => $r['department'],
-            'position'    => $r['position'],
-            'description' => $r['description'],
-            'is_active'   => (int)$r['is_active'],
+            'ppim_id'      => (int)$r['ppim_id'],
+            'start_year'   => (int)$r['start_year'],
+            'end_year'     => isset($r['end_year']) ? (int)$r['end_year'] : null,
+            'department'   => (string)$r['department'],
+            'position'     => (string)$r['position'],
+            'description'  => (string)$r['description'],
+            'is_active'    => (int)$r['is_active'],
         ];
     }
     $stmt->close();
     return $out;
 }
 function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) : array {
-    if (!$student_id) return json_encode([]);
-    $stmt = $conn->prepare('SELECT start_year, end_year, department, position, description, is_active FROM ppi_campus WHERE student_id = ? AND university_id = ? ORDER BY COALESCE(end_year,9999) DESC');
-    $stmt->bind_param('ii', $student_id, $university_id);
+    if (!$student_id) return [];
+    // When $university_id is null, show all campus entries for this student.
+    if ($university_id) {
+        $stmt = $conn->prepare(
+            'SELECT ppi_campus_id, university_id, start_year, end_year, department, position, description, is_active
+             FROM ppi_campus
+             WHERE student_id = ? AND university_id = ?
+             ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppi_campus_id DESC'
+        );
+        $stmt->bind_param('ii', $student_id, $university_id);
+    } else {
+        $stmt = $conn->prepare(
+            'SELECT ppi_campus_id, university_id, start_year, end_year, department, position, description, is_active
+             FROM ppi_campus
+             WHERE student_id = ?
+             ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppi_campus_id DESC'
+        );
+        $stmt->bind_param('i', $student_id);
+    }
     $stmt->execute();
     $res = $stmt->get_result();
     $out = [];
     while ($r = $res->fetch_assoc()) {
         $out[] = [
             'ppi_campus_id' => (int)$r['ppi_campus_id'],
+            'university_id' => isset($r['university_id']) ? (int)$r['university_id'] : null,
             'start_year'    => (int)$r['start_year'],
             'end_year'      => isset($r['end_year']) ? (int)$r['end_year'] : null,
-            'department'    => $r['department'],
-            'position'      => $r['position'],
-            'description'   => $r['description'],
+            'department'    => (string)$r['department'],
+            'position'      => (string)$r['position'],
+            'description'   => (string)$r['description'],
             'is_active'     => (int)$r['is_active'],
         ];
     }
@@ -179,17 +201,21 @@ function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) 
     return $out;
 }
 function get_student_row(mysqli $conn, int $sid): ?array {
-    $stmt = $conn->prepare('SELECT university_id FROM student WHERE student_id = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT * FROM student WHERE student_id = ? LIMIT 1');
     $stmt->bind_param('i', $sid);
     $stmt->execute();
-    return $stmt->get_result()->fetch_assoc() ?: null;
+    $row = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    return $row;
 }
 
 function get_student_uni(mysqli $conn, int $sid): ?array {
-    $stmt = $conn->prepare('SELECT  FROM student WHERE student_id = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT university_id FROM student WHERE student_id = ? LIMIT 1');
     $stmt->bind_param('i', $sid);
     $stmt->execute();
-    return $stmt->get_result()->fetch_assoc() ?: null;
+    $row = $stmt->get_result()->fetch_assoc() ?: null;
+    $stmt->close();
+    return $row;
 }
 
 // ---- Matching logic ----
