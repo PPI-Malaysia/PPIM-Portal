@@ -95,7 +95,7 @@ function redact_student(mysqli $conn, array $r): array {
     $phone = $r['phone_number'];
     $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[2])) . $m[3], $phone) : null;
     $addr = $r['address'];
-    if ($addr) $addr = mb_substr($addr, 0, 12) . str_repeat('*', max(0, mb_strlen($addr) - 12));
+    if ($addr) $addr = mb_substr($addr, 0, 12) . preg_replace('/[^\s]/u', '*', mb_substr($addr, 12));
     $uid = isset($r['university_id']) ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
     $sid = isset($r['student_id']) ? (int)$r['student_id'] : null;
