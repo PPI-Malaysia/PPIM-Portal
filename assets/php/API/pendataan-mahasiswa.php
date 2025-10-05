@@ -99,8 +99,8 @@ function redact_student(mysqli $conn, array $r): array {
     $uid = isset($r['university_id']) ? (int)$r['university_id'] : null;
     $uname = $uid ? lookup_university($conn, $uid) : null;
     $sid = isset($r['student_id']) ? (int)$r['student_id'] : null;
-    $ppi = $sid ? lookup_ppi_record($conn, $sid, $uid) : [],
-    $ppim = $sid ? lookup_ppim_record($conn, $sid) : [],
+    $ppi = $sid ? lookup_ppi_record($conn, $sid, $uid) : [];
+    $ppim = $sid ? lookup_ppim_record($conn, $sid) : [];
     return [
         'fullname'   => $r['fullname'],
         'dob'        => $r['dob'],
