@@ -164,24 +164,13 @@ function lookup_ppim_record(mysqli $conn, ?int $student_id) : array {
 }
 function lookup_ppi_record(mysqli $conn, ?int $student_id, ?int $university_id) : array {
     if (!$student_id) return [];
-    // When $university_id is null, show all campus entries for this student.
-    if ($university_id) {
-        $stmt = $conn->prepare(
-            'SELECT ppi_campus_id, university_id, start_year, end_year, department, position, description, is_active
-             FROM ppi_campus
-             WHERE student_id = ? AND university_id = ?
-             ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppi_campus_id DESC'
-        );
-        $stmt->bind_param('ii', $student_id, $university_id);
-    } else {
-        $stmt = $conn->prepare(
-            'SELECT ppi_campus_id, university_id, start_year, end_year, department, position, description, is_active
-             FROM ppi_campus
-             WHERE student_id = ?
-             ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppi_campus_id DESC'
-        );
-        $stmt->bind_param('i', $student_id);
-    }
+    $stmt = $conn->prepare(
+        'SELECT ppi_campus_id, university_id, start_year, end_year, department, position, description, is_active
+         FROM ppi_campus
+         WHERE student_id = ?
+         ORDER BY COALESCE(end_year,9999) DESC, start_year DESC, ppi_campus_id DESC'
+    );
+    $stmt->bind_param('i', $student_id);
     $stmt->execute();
     $res = $stmt->get_result();
     $out = [];
