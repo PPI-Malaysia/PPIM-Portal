@@ -289,7 +289,8 @@ try {
     if (!isset($conn) || $conn->connect_error) throw new Exception('Database connection failed');
 
     $body = json_input();
-    $action = strtolower(trim((string)($body['action'] ?? '')));
+    $action = trim((string)($body['action'] ?? ''));
+
 
     //get student data by student information
     if ($action === 'check') {
@@ -542,7 +543,7 @@ try {
         $endYear   = isset($body['end_year']) && $body['end_year'] !== '' ? (int)$body['end_year'] : null;
         $dept      = trim((string)($body['department'] ?? ''));
         $pos       = trim((string)($body['position'] ?? ''));
-        $desc      = trim((string)($body['additionalInfo'] ?? ''));
+        $desc      = trim((string)($body['description'] ?? ''));
 
         // check validation
         if ($startYear < 1900 || $startYear > 2100) fail('start_year invalid', 422);
