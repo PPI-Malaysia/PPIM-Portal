@@ -22,7 +22,7 @@ if ($isExist){
 ?>
 <b>Account Status:</b> Not exist, need to create new account
 <br><br>
-<form id="addPPICampusAccForm" action="assets/php/page/add_PPI_account.php" method="post">
+<form id="addPPICampusAccForm" action="../assets/php/page/add_PPI_account.php" method="post">
     <div class="mb-3">
         <label for="username" class="form-label">Username</label>
         <input type="text" id="username" class="form-control" name="username" required>
