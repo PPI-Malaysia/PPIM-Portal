@@ -544,6 +544,7 @@ try {
         $dept      = trim((string)($body['department'] ?? ''));
         $pos       = trim((string)($body['position'] ?? ''));
         $desc      = trim((string)($body['description'] ?? ''));
+        $isActive  = 0; //set 0 as default. 0 = unverified
 
         // check validation
         if ($startYear < 1900 || $startYear > 2100) fail('start_year invalid', 422);
@@ -567,18 +568,18 @@ try {
             if ($type === 'ppim') {
                 // ppim(student_id,start_year,end_year,department,position,description,is_active)
                 $stmt = $conn->prepare(
-                    'INSERT INTO ppim (student_id,start_year,end_year,department,position,description)
-                    VALUES (?,?,?,?,?,?)'
+                    'INSERT INTO ppim (student_id,start_year,end_year,department,position,description,is_active)
+                    VALUES (?,?,?,?,?,?,?)'
                 );
-                $stmt->bind_param('iiisss', $sid, $startYear, $endYear, $dept, $pos, $desc);
+                $stmt->bind_param('iiisssi', $sid, $startYear, $endYear, $dept, $pos, $desc, $isActive);
                 $stmt->execute();
             } else {
                 // ppi_campus(student_id,university_id,start_year,end_year,department,position,description,is_active)
                 $stmt = $conn->prepare(
-                    'INSERT INTO ppi_campus (student_id,university_id,start_year,end_year,department,position,description)
-                    VALUES (?,?,?,?,?,?,?)'
+                    'INSERT INTO ppi_campus (student_id,university_id,start_year,end_year,department,position,description,is_active)
+                    VALUES (?,?,?,?,?,?,?,?)'
                 );
-                $stmt->bind_param('iiiisss', $sid, $ppiUniId, $startYear, $endYear, $dept, $pos, $desc);
+                $stmt->bind_param('iiiisssi', $sid, $ppiUniId, $startYear, $endYear, $dept, $pos, $desc, $isActive);
                 $stmt->execute();
             }
 
@@ -675,7 +676,7 @@ try {
         $dept      = trim((string)($body['department'] ?? ''));
         $pos       = trim((string)($body['position'] ?? ''));
         $desc      = trim((string)($body['description'] ?? $body['additionalInfo'] ?? ''));
-        $isActive  = isset($body['is_active']) ? (int)((bool)$body['is_active']) : 1;
+        $isActive  = 0; 
 
         if ($startYear < 1900 || $startYear > 2100) fail('start_year invalid', 422);
         if ($endYear !== null && ($endYear < 1900 || $endYear > 2100)) fail('end_year invalid', 422);
