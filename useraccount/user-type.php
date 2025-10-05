@@ -85,7 +85,7 @@ $credit_footer = '
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body">
-                                            <form id="addUserTypeForm" action="assets/php/page/add_user_type.php"
+                                            <form id="addUserTypeForm" action="../assets/php/page/add_user_type.php"
                                                 method="post">
                                                 <div class="mb-3">
                                                     <label for="usertype-name" class="form-label">User Type Name</label>
@@ -205,7 +205,8 @@ $credit_footer = '
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
-                                <form id="editUserTypeForm" action="assets/php/page/edit_user_type.php" method="post">
+                                <form id="editUserTypeForm" action="../assets/php/page/edit_user_type.php"
+                                    method="post">
                                     <input type="hidden" id="edit-usertype-id" name="usertype_id">
 
                                     <div class="mb-3">
@@ -257,7 +258,7 @@ $credit_footer = '
     <script>
     // Load next available ID when modal opens
     document.getElementById('addUserType').addEventListener('show.bs.modal', function() {
-        fetch('assets/php/page/get_next_user_type_id.php')
+        fetch('../assets/php/page/get_next_user_type_id.php')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -278,7 +279,7 @@ $credit_footer = '
 
         const formData = new FormData(this);
 
-        fetch('assets/php/page/add_user_type.php', {
+        fetch('../assets/php/page/add_user_type.php', {
                 method: 'POST',
                 body: formData
             })
@@ -302,7 +303,7 @@ $credit_footer = '
         console.log('Editing user type:', userTypeId); // Debug log
 
         // Load current permissions for this user type
-        fetch(`assets/php/page/get_user_type_permissions.php?id=${userTypeId}`)
+        fetch(`../assets/php/page/get_user_type_permissions.php?id=${userTypeId}`)
             .then(response => {
                 console.log('Response status:', response.status); // Debug log
                 return response.json();
@@ -372,7 +373,7 @@ $credit_footer = '
 
         const formData = new FormData(this);
 
-        fetch('assets/php/page/edit_user_type.php', {
+        fetch('../assets/php/page/edit_user_type.php', {
                 method: 'POST',
                 body: formData
             })
@@ -396,7 +397,7 @@ $credit_footer = '
     // Delete user type function
     function deleteUserType(userTypeId) {
         if (confirm('Are you sure you want to delete this user type? This action cannot be undone.')) {
-            fetch('assets/php/page/delete_user_type.php', {
+            fetch('../assets/php/page/delete_user_type.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

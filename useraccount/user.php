@@ -349,7 +349,7 @@ $credit_footer = '
         const usertypeText = document.getElementById('user-type').selectedOptions[0].text;
 
         // Submit form with AJAX
-        fetch('assets/php/page/add_user.php', {
+        fetch('../assets/php/page/add_user.php', {
                 method: 'POST',
                 body: formData
             })
@@ -373,7 +373,7 @@ $credit_footer = '
     // Edit user function
     function editUser(userId) {
         // Load user data
-        fetch(`assets/php/page/get_user.php?id=${userId}`)
+        fetch(`../assets/php/page/get_user.php?id=${userId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -444,7 +444,7 @@ $credit_footer = '
         const username = formData.get('username');
         const usertypeText = usertypeSelect.selectedOptions[0]?.text || 'N/A';
 
-        fetch('assets/php/page/edit_user.php', {
+        fetch('../assets/php/page/edit_user.php', {
                 method: 'POST',
                 body: formData
             })
@@ -483,7 +483,7 @@ $credit_footer = '
     function deleteUser(userId, username, usertype) {
         if (usertype != 1000) {
             if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-                fetch('assets/php/page/delete_user.php', {
+                fetch('../assets/php/page/delete_user.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -509,7 +509,7 @@ $credit_footer = '
         } else {
             if (confirm(
                     `Are you sure you want to delete PPI Campus user: "${username}"? This action cannot be undone.`)) {
-                fetch('assets/php/page/delete_ppi_user.php', {
+                fetch('../assets/php/page/delete_ppi_user.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
