@@ -52,7 +52,7 @@
                 </a>
             </li>
 -->
-            <?php if ($main->hasPermission("student_db_view")){ ?>
+            <?php if ($main->hasPermission("student_db_view") || $main->hasPermission("campus_student_db_view")){ ?>
             <li class="side-nav-item">
                 <a data-bs-toggle="collapse" href="#studentdatabasesidebar" aria-expanded="false"
                     aria-controls="sidebarPages" class="side-nav-link">
@@ -67,16 +67,19 @@
                                 <span class="menu-text">Students</span>
                             </a>
                         </li>
+                        <?php if ($main->hasPermission("student_db_view")){ ?>
                         <li class="side-nav-item">
                             <a href="../database/ppim.php" class="side-nav-link">
                                 <span class="menu-text">PPIM Members</span>
                             </a>
                         </li>
+                        <?php } ?>
                         <li class="side-nav-item">
                             <a href="../database/ppi-campus.php" class="side-nav-link">
                                 <span class="menu-text">PPI Campus Members</span>
                             </a>
                         </li>
+                        <?php if ($main->hasPermission("student_db_view")){ ?>
                         <li class="side-nav-item">
                             <a href="../database/university.php" class="side-nav-link">
                                 <span class="menu-text">Universities</span>
@@ -92,6 +95,7 @@
                                 <span class="menu-text">Others</span>
                             </a>
                         </li>
+                        <?php } ?>
                     </ul>
                 </div>
             </li>

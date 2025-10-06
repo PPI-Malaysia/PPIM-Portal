@@ -12,6 +12,10 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+//check if user have access
+if(!$studentDB->hasFullAccess()){
+    header("location: ../index.php");
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

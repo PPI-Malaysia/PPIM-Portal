@@ -12,6 +12,12 @@ $credit_footer = '
         Rafi Daffa
     </a>
 ';
+
+//check if user have access
+if(!$studentDB->hasFullAccess()){
+    header("location: ../index.php");
+}
+
 // Pagination, search, sorting, and page size
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $allowedLimits = [10, 100, 500];

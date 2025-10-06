@@ -13,6 +13,11 @@ $credit_footer = '
     </a>
 ';
 
+//check if user have access
+if(!$studentDB->hasFullAccess()){
+    header("location: ../index.php");
+}
+
 // Pagination and search parameters
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $limit = 10;

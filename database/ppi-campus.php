@@ -17,10 +17,27 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $limit = 10;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
+//check if user has a full access or just a ppi campus
+$hasFullAccess = $studentDB->hasFullAccess();
+
 // Get paginated data and total count
 $data = $studentDB->getPaginatedTableDataWithJoins('ppi_campus', $page, $limit, $search);
 $totalRecords = $studentDB->getTotalCount('ppi_campus', $search);
 $totalPages = ceil($totalRecords / $limit);
+
+//check status
+function status($int){
+    switch ($int){
+        case "0":
+            return "unverified";
+        case "1":
+            return "active";
+        case "2":
+            return "ended";
+        default:
+            return "unknown";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -99,7 +116,7 @@ $totalPages = ceil($totalRecords / $limit);
                                         <form method="POST" class="row g-3">
                                             <input type="hidden" name="action" value="create">
                                             <input type="hidden" name="table" value="ppi_campus">
-                                            <div class="col-md-6">
+                                            <div class="col-12">
                                                 <label class="form-label">Student</label>
                                                 <select name="student_id" class="form-select" required>
                                                     <option value="">Select Student</option>
@@ -111,7 +128,8 @@ $totalPages = ceil($totalRecords / $limit);
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
-                                            <div class="col-md-6">
+                                            <?php if ($hasFullAccess){ ?>
+                                            <div class="col-12">
                                                 <label class="form-label">University</label>
                                                 <select name="university_id" class="form-select" required>
                                                     <option value="">Select University</option>
@@ -124,12 +142,13 @@ $totalPages = ceil($totalRecords / $limit);
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
-                                            <div class="col-md-3">
+                                            <?php } ?>
+                                            <div class="col-md-6">
                                                 <label class="form-label">Start Year</label>
                                                 <input type="number" name="start_year" class="form-control" required
                                                     min="1900" max="2100">
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-6">
                                                 <label class="form-label">End Year</label>
                                                 <input type="number" name="end_year" class="form-control" min="1900"
                                                     max="2100">
@@ -193,7 +212,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                 <th>Start Year</th>
                                                 <th>End Year</th>
                                                 <th>Position</th>
-                                                <th>Active</th>
+                                                <th>Status</th>
                                                 <th width="200">Actions</th>
                                             </tr>
                                         </thead>
@@ -223,7 +242,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                 <td><?= htmlspecialchars($row['start_year']) ?></td>
                                                 <td><?= htmlspecialchars($row['end_year'] ?? 'Current') ?></td>
                                                 <td><?= htmlspecialchars($row['position'] ?? '') ?></td>
-                                                <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
+                                                <td><?= status($row['is_active']) ?></td>
                                                 <td>
                                                     <button type="button"
                                                         class="btn btn-soft-primary rounded-pill btn-sm me-1"
@@ -304,12 +323,15 @@ $totalPages = ceil($totalRecords / $limit);
                                                                             <label class="form-label">Status</label>
                                                                             <select name="is_active"
                                                                                 class="form-select">
+                                                                                <option value="0"
+                                                                                    <?= !$row['is_active'] ? 'selected' : '' ?>>
+                                                                                    Unverified</option>
                                                                                 <option value="1"
                                                                                     <?= $row['is_active'] ? 'selected' : '' ?>>
                                                                                     Active</option>
-                                                                                <option value="0"
-                                                                                    <?= !$row['is_active'] ? 'selected' : '' ?>>
-                                                                                    Inactive</option>
+                                                                                <option value="2"
+                                                                                    <?= status($row['is_active']) == "ended" ? 'selected' : '' ?>>
+                                                                                    Ended</option>
                                                                             </select>
                                                                         </div>
                                                                     </div>

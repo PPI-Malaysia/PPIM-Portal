@@ -9,6 +9,32 @@ if (!defined('ROOT_PATH')) {
 require_once(ROOT_PATH . "assets/php/main.php");
 
 class Calendar extends ppim {
+
+    /**
+     * Constructor - Initialize with access control
+     */
+    public function __construct() {
+        try {
+            parent::__construct();
+            
+            if (!$this->conn) {
+                throw new Exception("Database connection not established");
+            }
+            
+            if (!$this->hasAccess()) {
+                header('Location: /access-denied.php');
+                exit();
+            }
+            
+            if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+                $this->handleRequest();
+            }
+            
+        } catch (Exception $e) {
+            $this->showAlert('Constructor Error: ' . htmlspecialchars($e->getMessage()), 'danger');
+        }
+    }
+
     /**
      * Format datetime for MySQL
      * Convert from ISO 8601 format to MySQL datetime format
@@ -32,6 +58,15 @@ class Calendar extends ppim {
         }
     }
     
+    
+    /**
+     * Check if user has access to student database
+     * @return boolean
+     */
+    private function hasAccess() {
+        return $this->hasPermission("calendar_access");
+    }
+
     /**
      * Get all calendar events
      * @return array

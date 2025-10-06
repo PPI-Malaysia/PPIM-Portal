@@ -13,6 +13,9 @@ $sort = isset($_GET['sort']) ? $_GET['sort'] : null; // allowed: id, fullname, u
 $dir = isset($_GET['dir']) ? strtolower($_GET['dir']) : 'asc';
 $dir = $dir === 'desc' ? 'desc' : 'asc';
 
+//check if user has a full access or just a ppi campus
+$hasFullAccess = $studentDB->hasFullAccess();
+
 // Get paginated data
 $data = $studentDB->getPaginatedTableDataWithJoins('student', $page, $limit, $search, $sort, $dir);
 $totalRecords = $studentDB->getTotalCount('student', $search);
@@ -93,10 +96,18 @@ $credit_footer = '
                             <div
                                 class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
                                 <h4 class="header-title">Students</h4>
-                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
-                                    data-bs-target="#addStudent">
-                                    <i class="ti ti-plus fs-16"></i> Add New
-                                </button>
+                                <div>
+                                    <?php if (!$hasFullAccess) { ?>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mx-2"
+                                        data-bs-toggle="collapse" data-bs-target="#importStudent">
+                                        <i class="ti ti-plus fs-16"></i> Add Bulk
+                                    </button>
+                                    <?php } ?>
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
+                                        data-bs-target="#addStudent">
+                                        <i class="ti ti-plus fs-16"></i> Add New
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <!-- Search Form -->
@@ -132,22 +143,68 @@ $credit_footer = '
                                             <form method="GET" class="d-inline-flex align-items-center gap-2">
                                                 <input type="hidden" name="page" value="1">
                                                 <?php if ($search !== ''): ?>
-                                                    <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                                <input type="hidden" name="search"
+                                                    value="<?= htmlspecialchars($search) ?>">
                                                 <?php endif; ?>
                                                 <?php if (!empty($sort)): ?>
-                                                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
-                                                    <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                                                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                                <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
                                                 <?php endif; ?>
                                                 <label for="limitSelect" class="me-1 text-muted mb-0">Show:</label>
-                                                <select id="limitSelect" name="limit" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                                                <select id="limitSelect" name="limit"
+                                                    class="form-select form-select-sm w-auto"
+                                                    onchange="this.form.submit()">
                                                     <?php foreach ([10, 100, 500] as $opt): ?>
-                                                        <option value="<?= $opt ?>" <?= ($limit === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                                    <option value="<?= $opt ?>"
+                                                        <?= ($limit === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </form>
                                         </div>
                                     </div>
                                 </div>
+                                <?php if (!$hasFullAccess) { ?>
+                                <!-- Import Form -->
+                                <div class="collapse mb-3" id="importStudent">
+                                    <div class="card card-body">
+                                        <h3>Step</h3>
+                                        <p>
+                                            1. Download the template file <a
+                                                href="../assets/file/template_mahasiswa.xlsx">(template_mahasiswa.xlsx)</a><br>
+                                            2. Fill in at least the "full name" column for each student<br>
+                                            3. Drag and drop the completed file into the upload section below
+                                        </p>
+                                        <h3>Note!</h3>
+                                        <p>
+                                            1. The only required column is "Full Name"<br>
+                                            2. All other columns are optional<br>
+                                            3. Do not delete, move, or rename any columns in the template<br>
+                                            4. Leave cells blank if the information is unknown<br>
+                                            5. every phone number should have their region code, including the "+" (eg.
+                                            +60)<br>
+                                            6. Passport consist of 1 character and 7 number (eg. A1234567)
+                                        </p>
+                                        <hr>
+                                        <h5 class="card-title">Import New Student</h5>
+                                        <form action="" method="post" class="dropzone dz-clickable"
+                                            id="myAwesomeDropzone" data-plugin="dropzone"
+                                            data-previews-container="#file-previews"
+                                            data-upload-preview-template="#uploadPreviewTemplate"
+                                            enctype="multipart/form-data">
+                                            <input type="hidden" name="action" value="bulk_student_upload">
+                                            <input type="hidden" name="table" value="student">
+                                            <div class="dz-message needsclick">
+                                                <i class="ti ti-cloud-upload h1 text-muted"></i>
+                                                <h3>Drop files here or click to upload.</h3>
+                                                <span class="text-muted fs-13">(Only support
+                                                    <strong>.Xlsx</strong> format)</span>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                <?php } ?>
+
+
 
                                 <!-- Add Form -->
                                 <div class="collapse mb-3" id="addStudent">
@@ -272,7 +329,8 @@ $credit_footer = '
                                                 ?>
                                                 <th><?= sort_link('No', 'id', $sort, $dir, $search) ?></th>
                                                 <th><?= sort_link('Full Name', 'fullname', $sort, $dir, $search) ?></th>
-                                                <th><?= sort_link('University', 'university', $sort, $dir, $search) ?></th>
+                                                <th><?= sort_link('University', 'university', $sort, $dir, $search) ?>
+                                                </th>
                                                 <th>Email</th>
                                                 <th>Status</th>
                                                 <th><?= sort_link('Degree', 'degree', $sort, $dir, $search) ?></th>
