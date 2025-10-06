@@ -32,6 +32,20 @@ $dir = $dir === 'desc' ? 'desc' : 'asc';
 $data = $studentDB->getPaginatedTableDataWithJoins('ppim', $page, $limit, $search, $sort, $dir);
 $totalRecords = $studentDB->getTotalCount('ppim', $search);
 $totalPages = ceil($totalRecords / $limit);
+
+//check status
+function status($int){
+    switch ($int){
+        case "0":
+            return "unverified";
+        case "1":
+            return "active";
+        case "2":
+            return "ended";
+        default:
+            return "unknown";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -237,7 +251,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                 </th>
                                                 <th><?= sort_link_ppim('Position', 'position', $sort, $dir, $search, $limit) ?>
                                                 </th>
-                                                <th><?= sort_link_ppim('Active', 'Active', $sort, $dir, $search, $limit) ?>
+                                                <th><?= sort_link_ppim('Status', 'Status', $sort, $dir, $search, $limit) ?>
                                                 </th>
                                                 <th width="200">Actions</th>
                                             </tr>
@@ -270,7 +284,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                 <td><?= htmlspecialchars($row['end_year'] ?? 'Current') ?></td>
                                                 <td><?= htmlspecialchars($row['department']) ?></td>
                                                 <td><?= htmlspecialchars($row['position'] ?? '') ?></td>
-                                                <td><?= $row['is_active'] ? 'Yes' : 'No' ?></td>
+                                                <td><?= status($row['is_active']) ?></td>
                                                 <td>
                                                     <button type="button"
                                                         class="btn btn-soft-primary rounded-pill btn-sm me-1"
@@ -314,6 +328,13 @@ $totalPages = ceil($totalRecords / $limit);
                                                                                 readonly>
                                                                         </div>
                                                                         <div class="mb-3">
+                                                                            <label class="form-label">Start Year</label>
+                                                                            <input type="number" name="start_year"
+                                                                                class="form-control"
+                                                                                value="<?= htmlspecialchars($row['start_year'] ?? '') ?>"
+                                                                                min="1900" max="2100">
+                                                                        </div>
+                                                                        <div class="mb-3">
                                                                             <label class="form-label">End Year</label>
                                                                             <input type="number" name="end_year"
                                                                                 class="form-control"
@@ -344,12 +365,15 @@ $totalPages = ceil($totalRecords / $limit);
                                                                             <label class="form-label">Status</label>
                                                                             <select name="is_active"
                                                                                 class="form-select">
+                                                                                <option value="0"
+                                                                                    <?= !$row['is_active'] ? 'selected' : '' ?>>
+                                                                                    Unverified</option>
                                                                                 <option value="1"
                                                                                     <?= $row['is_active'] ? 'selected' : '' ?>>
                                                                                     Active</option>
-                                                                                <option value="0"
-                                                                                    <?= !$row['is_active'] ? 'selected' : '' ?>>
-                                                                                    Inactive</option>
+                                                                                <option value="2"
+                                                                                    <?= status($row['is_active']) == "ended" ? 'selected' : '' ?>>
+                                                                                    Ended</option>
                                                                             </select>
                                                                         </div>
                                                                     </div>

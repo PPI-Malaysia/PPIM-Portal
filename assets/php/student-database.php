@@ -401,18 +401,20 @@ class StudentDatabase extends ppim {
                     break;
 
                 case 'ppim':
-                    $stmt = $this->conn->prepare("UPDATE ppim SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppim_id = ?");
+                    $stmt = $this->conn->prepare("UPDATE ppim SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppim_id = ?");
+                    $start_year = empty($data['start_year']) ? null : (int)$data['start_year'];
                     $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
                     $position = empty($data['position']) ? null : $data['position'];
                     $desc = empty($data['description']) ? null : $data['description'];
                     $is_active = (int)($data['is_active'] ?? 1);
                     $ppim_id = (int)($data['ppim_id'] ?? 0);
                     
-                    $stmt->bind_param("isssii", $end_year, $data['department'], $position, $desc, $is_active, $ppim_id);
+                    $stmt->bind_param("iisssii", $start_year, $end_year, $data['department'], $position, $desc, $is_active, $ppim_id);
                     break;
 
                 case 'ppi_campus':
-                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $start_year = empty($data['start_year']) ? null : (int)$data['start_year'];
                     $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
                     $dept = empty($data['department']) ? null : $data['department'];
                     $position = empty($data['position']) ? null : $data['position'];
@@ -420,7 +422,7 @@ class StudentDatabase extends ppim {
                     $is_active = (int)($data['is_active']);
                     $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
                     
-                    $stmt->bind_param("isssii", $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
+                    $stmt->bind_param("iisssii", $start_year, $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
                     break;
 
                 default:
@@ -452,7 +454,8 @@ class StudentDatabase extends ppim {
                     break;
 
                 case 'ppi_campus':
-                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $start_year = empty($data['start_year']) ? null : (int)$data['start_year'];
                     $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
                     $dept = empty($data['department']) ? null : $data['department'];
                     $position = empty($data['position']) ? null : $data['position'];
@@ -460,7 +463,7 @@ class StudentDatabase extends ppim {
                     $is_active = (int)($data['is_active']);
                     $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
                     
-                    $stmt->bind_param("isssii", $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
+                    $stmt->bind_param("iisssii", $start_year, $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
                     break;
 
                 default:

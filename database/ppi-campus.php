@@ -294,6 +294,13 @@ function status($int){
                                                                                 readonly>
                                                                         </div>
                                                                         <div class="mb-3">
+                                                                            <label class="form-label">Start Year</label>
+                                                                            <input type="number" name="start_year"
+                                                                                class="form-control"
+                                                                                value="<?= htmlspecialchars($row['start_year'] ?? '') ?>"
+                                                                                min="1900" max="2100">
+                                                                        </div>
+                                                                        <div class="mb-3">
                                                                             <label class="form-label">End Year</label>
                                                                             <input type="number" name="end_year"
                                                                                 class="form-control"
