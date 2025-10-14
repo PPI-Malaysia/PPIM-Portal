@@ -487,18 +487,19 @@ try {
             $stmt->execute();
             $new_sid = (int)$conn->insert_id;
 
+            $isPPIActive  = 0; //set 0 as default. 0 = unverified
             // optional PPIM
             if (!empty($body['ppim']) && is_array($body['ppim'])) {
                 $p = $body['ppim'];
                 $stmt = $conn->prepare('INSERT INTO ppim
-                    (student_id,start_year,end_year,department,position,description)
-                    VALUES (?,?,?,?,?,?)');
+                    (student_id,start_year,end_year,department,position,description,is_active)
+                    VALUES (?,?,?,?,?,?,?)');
                 $ppim_start = (int)($p['startYear'] ?? 0);
                 $ppim_end   = isset($p['endYear']) ? (int)$p['endYear'] : null;
                 $ppim_dept  = trim((string)($p['department'] ?? ''));
                 $ppim_pos   = trim((string)($p['position'] ?? ''));
                 $ppim_desc  = trim((string)($p['additionalInfo'] ?? ''));
-                $stmt->bind_param('iiisss', $new_sid, $ppim_start, $ppim_end, $ppim_dept, $ppim_pos, $ppim_desc);
+                $stmt->bind_param('iiisssi', $new_sid, $ppim_start, $ppim_end, $ppim_dept, $ppim_pos, $ppim_desc, $isPPIActive);
                 $stmt->execute();
             }
 
@@ -506,14 +507,14 @@ try {
             if (!empty($body['ppi_campus']) && is_array($body['ppi_campus'])) {
                 $p = $body['ppi_campus'];
                 $stmt = $conn->prepare('INSERT INTO ppi_campus
-                    (student_id,start_year,end_year,university_id,department,position,description)
-                    VALUES (?,?,?,?,?,?,?)');
+                    (student_id,start_year,end_year,university_id,department,position,description,is_active)
+                    VALUES (?,?,?,?,?,?,?,?)');
                 $pc_start = (int)($p['startYear'] ?? 0);
                 $pc_end   = isset($p['endYear']) ? (int)$p['endYear'] : null;
                 $pc_dept  = trim((string)($p['department'] ?? ''));
                 $pc_pos   = trim((string)($p['position'] ?? ''));
                 $pc_desc  = trim((string)($p['additionalInfo'] ?? ''));
-                $stmt->bind_param('iiiisss', $new_sid, $pc_start, $pc_end, $uid, $pc_dept, $pc_pos, $pc_desc);
+                $stmt->bind_param('iiiisssi', $new_sid, $pc_start, $pc_end, $uid, $pc_dept, $pc_pos, $pc_desc, $isPPIActive);
                 $stmt->execute();
             }
 
