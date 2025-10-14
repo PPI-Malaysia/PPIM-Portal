@@ -91,9 +91,14 @@ function redact_student(mysqli $conn, array $r): array {
     $passport = $r['passport'];
     if ($passport) $passport = preg_replace('/^(.{4}).+$/', '$1****', $passport);
     $email = $r['email'];
-    $email = ($email && filter_var($email,FILTER_VALIDATE_EMAIL) && strlen(($p=explode('@',$email,2))[0])>4) ? substr($p[0],0,2).str_repeat('*',strlen($p[0])-4).substr($p[0],-2).'@'.$p[1] : $email;
+    $email = ($email && filter_var($email, FILTER_VALIDATE_EMAIL) && strlen(($p = explode('@', $email, 2))[0]) > 3)
+    ? substr($p[0], 0, 2)
+        . str_repeat('*', strlen($p[0]) - 3)
+        . substr($p[0], -1)
+        . '@' . $p[1]
+    : $email;
     $phone = $r['phone_number'];
-    $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[2])) . $m[3], $phone) : null;
+    $phone = $phone ? preg_replace_callback('/^(\+?\d{3})(\d+)(\d{3})$/', fn($m) => $m[1] . str_repeat('*', strlen($m[1])) . $m[2], $phone) : null;
     $addr = $r['address'];
     if ($addr) $addr = mb_substr($addr, 0, 12) . preg_replace('/[^\s]/u', '*', mb_substr($addr, 12));
     $uid = isset($r['university_id']) ? (int)$r['university_id'] : null;
