@@ -36,6 +36,9 @@ $credit_footer = '
     <link href="assets/vendor/datatables.net-bs5/css/dataTables.bootstrap5.min.css" rel="stylesheet" type="text/css" />
     <link href="assets/vendor/datatables.net-responsive-bs5/css/responsive.bootstrap5.min.css" rel="stylesheet" type="text/css" />
     <link href="assets/vendor/datatables.net-buttons-bs5/css/buttons.bootstrap5.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Flatpickr css -->
+    <link href="assets/vendor/flatpickr/flatpickr.min.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
@@ -199,70 +202,100 @@ $credit_footer = '
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
-                                <form id="createTicketForm">
+                                <form id="createTicketForm" class="needs-validation" novalidate>
                                     <div class="row mb-3">
                                         <div class="col-md-6">
                                             <label for="eventName" class="form-label">Event Name</label>
-                                            <input type="text" class="form-control" id="eventName" required>
+                                            <input type="text" class="form-control" id="eventName" name="eventName" required>
+                                            <div class="invalid-feedback">
+                                                Please provide an event name.
+                                            </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <label for="ticketType" class="form-label">Ticket Type</label>
-                                            <select class="form-select" id="ticketType" required>
-                                                <option value="">Select Ticket Type</option>
-                                                <option value="Standard">Standard</option>
-                                                <option value="VIP">VIP</option>
-                                                <option value="Early Bird">Early Bird</option>
-                                                <option value="Student">Student</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="ticketPrice" class="form-label">Price (RM)</label>
-                                            <input type="number" class="form-control" id="ticketPrice" min="0" step="0.01" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="ticketQuantity" class="form-label">Quantity Available</label>
-                                            <input type="number" class="form-control" id="ticketQuantity" min="1" required>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
                                         <div class="col-md-6">
                                             <label for="eventDate" class="form-label">Event Date</label>
-                                            <input type="text" class="form-control" id="eventDate" data-provider="flatpickr" data-date-format="Y-m-d" required>
+                                            <input type="text" class="form-control" id="eventDate" name="eventDate"
+                                                data-provider="flatpickr" data-date-format="Y-m-d" required>
+                                            <div class="invalid-feedback">
+                                                Please select an event date.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="eventLocation" class="form-label">Event Location</label>
+                                            <input type="text" class="form-control" id="eventLocation" name="eventLocation" required>
+                                            <div class="invalid-feedback">
+                                                Please provide an event location.
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
                                             <label for="eventTime" class="form-label">Event Time</label>
-                                            <input type="text" class="form-control" id="eventTime" data-provider="flatpickr" data-enable-time="true" data-no-calendar="true" data-date-format="H:i" required>
+                                            <input type="text" class="form-control" id="eventTime" name="eventTime"
+                                                data-provider="flatpickr" data-enable-time="true" data-no-calendar="true"
+                                                data-time-format="H:i" data-time_24hr="true" required>
+                                            <div class="invalid-feedback">
+                                                Please select an event time.
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="eventLocation" class="form-label">Event Location</label>
-                                        <input type="text" class="form-control" id="eventLocation" required>
-                                    </div>
+
                                     <div class="mb-3">
                                         <label for="eventDescription" class="form-label">Event Description</label>
-                                        <textarea class="form-control" id="eventDescription" rows="4" required></textarea>
+                                        <textarea class="form-control" id="eventDescription" name="eventDescription" rows="3"></textarea>
                                     </div>
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="saleStartDate" class="form-label">Sale Start Date</label>
-                                            <input type="text" class="form-control" id="saleStartDate" data-provider="flatpickr" data-date-format="Y-m-d" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="saleEndDate" class="form-label">Sale End Date</label>
-                                            <input type="text" class="form-control" id="saleEndDate" data-provider="flatpickr" data-date-format="Y-m-d" required>
+
+                                    <h5 class="mt-4 mb-3">Ticket Details</h5>
+
+                                    <div id="ticketTypes">
+                                        <div class="ticket-type border rounded p-3 mb-3">
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Ticket Type</label>
+                                                    <input type="text" class="form-control" name="ticketType[]" placeholder="e.g. VIP, Regular, Student" required>
+                                                    <div class="invalid-feedback">
+                                                        Please provide a ticket type.
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Price (RM)</label>
+                                                    <input type="number" class="form-control" name="ticketPrice[]" min="0" step="0.01" required>
+                                                    <div class="invalid-feedback">
+                                                        Please provide a valid price.
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Quantity Available</label>
+                                                    <input type="number" class="form-control" name="ticketQuantity[]" min="1" required>
+                                                    <div class="invalid-feedback">
+                                                        Please provide a valid quantity (minimum 1).
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Sale End Date</label>
+                                                    <input type="text" class="form-control" name="ticketEndDate[]"
+                                                        data-provider="flatpickr" data-date-format="Y-m-d" required>
+                                                    <div class="invalid-feedback">
+                                                        Please select a sale end date.
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
                                     <div class="mb-3">
-                                        <label for="eventImage" class="form-label">Event Image</label>
-                                        <input type="file" class="form-control" id="eventImage" accept="image/*">
+                                        <button type="button" id="addTicketType" class="btn btn-outline-primary">
+                                            <i class="ti ti-plus me-1"></i> Add Another Ticket Type
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary" id="saveTicketBtn">Create Ticket</button>
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="saveTicket">Create Ticket</button>
                             </div>
                         </div>
                     </div>
@@ -362,6 +395,14 @@ $credit_footer = '
     <!-- Vendor js -->
     <script src="assets/js/vendor.min.js"></script>
 
+    <!-- jQuery (required for DataTables) -->
+    <script src="assets/vendor/jquery/jquery.min.js"></script>
+
+    <!-- JSZip and PDFMake for DataTables export -->
+    <script src="assets/vendor/jszip/jszip.min.js"></script>
+    <script src="assets/vendor/pdfmake/pdfmake.min.js"></script>
+    <script src="assets/vendor/pdfmake/vfs_fonts.js"></script>
+
     <!-- Datatable js -->
     <script src="assets/vendor/datatables.net/js/jquery.dataTables.min.js"></script>
     <script src="assets/vendor/datatables.net-bs5/js/dataTables.bootstrap5.min.js"></script>
@@ -370,14 +411,17 @@ $credit_footer = '
     <script src="assets/vendor/datatables.net-buttons/js/dataTables.buttons.min.js"></script>
     <script src="assets/vendor/datatables.net-buttons-bs5/js/buttons.bootstrap5.min.js"></script>
     <script src="assets/vendor/datatables.net-buttons/js/buttons.html5.min.js"></script>
-    <script src="assets/vendor/datatables.net-buttons/js/buttons.flash.min.js"></script>
     <script src="assets/vendor/datatables.net-buttons/js/buttons.print.min.js"></script>
+    <script src="assets/vendor/datatables.net-buttons/js/buttons.colVis.min.js"></script>
+
+    <!-- Flatpickr js -->
+    <script src="assets/vendor/flatpickr/flatpickr.min.js"></script>
+
+    <!-- Ticket page js -->
+    <script src="assets/js/pages/ticket.js"></script>
 
     <!-- App js -->
-    <script src="assets/js/app.min.js"></script>
-
-    <!-- Ticket Management js -->
-    <script src="assets/js/pages/ticket.js"></script>
+    <script src="assets/js/app.js"></script>
 
 </body>
 
