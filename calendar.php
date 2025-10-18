@@ -39,7 +39,7 @@ $credit_footer = '
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <!-- Page css -->
-    <link href="assets/css/page/calendar.css" rel="stylesheet" type="text/css" />
+    <link href="assets/css/page/calendar.css?dev=1.1" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
@@ -279,7 +279,7 @@ $credit_footer = '
     const hasEditAccess = <?php echo $main->hasPermission('calendar_edit_others') ? 'true' : 'false'; ?>;
     const hasDeleteAccess = <?php echo $main->hasPermission('calendar_delete_others') ? 'true' : 'false'; ?>;
     </script>
-    <script src="assets/js/pages/calendar.js"></script>
+    <script src="assets/js/pages/calendar.js?dev=1.1"></script>
 
 </body>
 
