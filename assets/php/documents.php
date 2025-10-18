@@ -180,17 +180,25 @@ class Documents extends ContentManagement {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $this->conn->prepare($sql);
+        // Bind only variables (no expressions) due to mysqli bind_param by-reference semantics
+        $title = isset($data['title']) ? $data['title'] : '';
+        $description = isset($data['description']) ? $data['description'] : '';
+        $category = isset($data['category']) ? $data['category'] : '';
+        $thumbnailUrl = isset($data['thumbnail_url']) ? $data['thumbnail_url'] : null;
+        $uploadedBy = $this->user_id;
+        $metadataParam = $metadata;
+        // Types: title(s), description(s), category(s), file_url(s), file_size(s), file_type(s), thumbnail_url(s), uploaded_by(i), metadata(s)
         $stmt->bind_param(
-            "ssssssis",
-            $data['title'],
-            $data['description'],
-            $data['category'],
+            "sssssssis",
+            $title,
+            $description,
+            $category,
             $fileUrl,
             $fileSize,
             $fileType,
-            $data['thumbnail_url'] ?? null,
-            $this->user_id,
-            $metadata
+            $thumbnailUrl,
+            $uploadedBy,
+            $metadataParam
         );
         
         if ($stmt->execute()) {

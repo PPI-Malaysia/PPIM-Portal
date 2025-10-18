@@ -1,9 +1,29 @@
 <?php
 // document_operations.php - Handle AJAX operations for documents
-session_start();
-require_once("../../documents.php");
-
-header('Content-Type: application/json');
+// Flag this script as API mode to prevent HTML redirects in constructors
+define('IS_API', true);
+if (session_status() == PHP_SESSION_NONE) { session_start(); }
+// Ensure JSON header is sent before any output and suppress HTML errors in API mode
+header('Content-Type: application/json; charset=UTF-8');
+if (function_exists('ini_set')) { @ini_set('display_errors', '0'); }
+// Buffer and discard any accidental output from includes
+ob_start();
+// Ensure fatal errors still return JSON
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (ob_get_length()) { ob_clean(); }
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Server error',
+            'error' => $error['message']
+        ]);
+    }
+});
+require_once(__DIR__ . "/../documents.php");
+if (ob_get_length()) { ob_clean(); }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);

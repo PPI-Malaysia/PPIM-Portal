@@ -48,6 +48,11 @@ class ppim {
             $this->isLoggedIn = true;
             return true;
         } else {
+            // In API mode, don't redirect. Let caller handle auth failure with JSON.
+            if (defined('IS_API') && IS_API === true) {
+                $this->isLoggedIn = false;
+                return false;
+            }
             // Use a relative path or absolute URL instead of filesystem path
             header('Location: /login.php');
             exit();

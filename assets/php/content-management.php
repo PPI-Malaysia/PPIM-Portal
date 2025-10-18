@@ -11,6 +11,10 @@ class ContentManagement extends ppim {
         parent::__construct();
         
         if (!$this->hasContentAccess()) {
+            // In API mode, avoid redirect output that would corrupt JSON
+            if (defined('IS_API') && IS_API === true) {
+                return;
+            }
             header('Location: /index.php');
             exit();
         }
