@@ -26,9 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
-            // Verify password with salt
-            $hashedPassword = hash('sha256', $password . $user['salt']);
-            if ($hashedPassword === $user['password']) {
+            
+            $isValid = false;
+            
+            // 1) Preferred: salted SHA-256 (current system)
+            if (!empty($user['salt'])) {
+                $hashedPassword = hash('sha256', $password . $user['salt']);
+                if (hash_equals($user['password'], $hashedPassword)) {
+                    $isValid = true;
+                }
+            }
+            
+            // 2) Backward compatibility: password_hash (bcrypt/argon2) if salt empty or not matching
+            if (!$isValid && (empty($user['salt']) || preg_match('/^\$2y\$|^\$2a\$|^\$2b\$|^\$argon2/', (string)$user['password']))) {
+                if (function_exists('password_verify') && password_verify($password, (string)$user['password'])) {
+                    $isValid = true;
+                }
+            }
+            
+            if ($isValid) {
                 //Password is correct, create session
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
