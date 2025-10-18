@@ -1,6 +1,6 @@
 <?php
 // team-members.php - Team members management class
-require_once("content-management.php");
+require_once(__DIR__."/content-management.php");
 
 class TeamMembers extends ContentManagement {
     
@@ -326,4 +326,3 @@ class TeamMembers extends ContentManagement {
     }
 }
 ?>
-

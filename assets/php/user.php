@@ -1,6 +1,6 @@
 <?php
 // user.php - User management functionality
-require_once("main.php");
+require_once(__DIR__."/main.php");
 
 class User extends ppim {
     private $users = [];

@@ -1,6 +1,6 @@
 <?php
 // campuses.php - Campuses management class
-require_once("content-management.php");
+require_once(__DIR__."/content-management.php");
 
 class Campuses extends ContentManagement {
     
@@ -413,4 +413,3 @@ class Campuses extends ContentManagement {
     }
 }
 ?>
-

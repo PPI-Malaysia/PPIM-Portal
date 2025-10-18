@@ -1,6 +1,6 @@
 <?php
 // content-management.php - Base class for content management system
-require_once("main.php");
+require_once(__DIR__."/main.php");
 
 class ContentManagement extends ppim {
     
@@ -324,4 +324,3 @@ class ContentManagement extends ppim {
     }
 }
 ?>
-
