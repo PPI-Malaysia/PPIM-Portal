@@ -52,6 +52,37 @@
                 </a>
             </li>
 -->
+            <?php if ($main->hasPermission("content_view")){ ?>
+            <li class="side-nav-item">
+                <a data-bs-toggle="collapse" href="#contentmgmt" aria-expanded="false" aria-controls="contentmgmt"
+                    class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-news"></i></span>
+                    <span class="menu-text"> Website Content </span>
+                    <span class="menu-arrow"></span>
+                </a>
+                <div class="collapse" id="contentmgmt">
+                    <ul class="sub-menu">
+                        <li class="side-nav-item">
+                            <a href="../content-management.php" class="side-nav-link">
+                                <span class="menu-text">Publications</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="../documents-management.php" class="side-nav-link">
+                                <span class="menu-text">Documents</span>
+                            </a>
+                        </li>
+                        <li class="side-nav-item">
+                            <a href="../team-management.php" class="side-nav-link">
+                                <span class="menu-text">Team Members</span>
+                            </a>
+                        </li>
+
+                    </ul>
+                </div>
+            </li>
+            <?php } ?>
+
             <?php if ($main->hasPermission("student_db_view") || $main->hasPermission("campus_student_db_view")){ ?>
             <li class="side-nav-item">
                 <a data-bs-toggle="collapse" href="#studentdatabasesidebar" aria-expanded="false"
@@ -121,38 +152,6 @@
                                 <span class="menu-text">User Type</span>
                             </a>
                         </li>
-                    </ul>
-                </div>
-            </li>
-            <?php } ?>
-
-            <?php if ($main->hasPermission("content_view")){ ?>
-            <li class="side-nav-title mt-2">Content Management</li>
-            <li class="side-nav-item">
-                <a data-bs-toggle="collapse" href="#contentmgmt" aria-expanded="false"
-                    aria-controls="contentmgmt" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-news"></i></span>
-                    <span class="menu-text"> Content </span>
-                    <span class="menu-arrow"></span>
-                </a>
-                <div class="collapse" id="contentmgmt">
-                    <ul class="sub-menu">
-                        <li class="side-nav-item">
-                            <a href="../content-management.php" class="side-nav-link">
-                                <span class="menu-text">Publications</span>
-                            </a>
-                        </li>
-                        <li class="side-nav-item">
-                            <a href="../documents-management.php" class="side-nav-link">
-                                <span class="menu-text">Documents</span>
-                            </a>
-                        </li>
-                        <li class="side-nav-item">
-                            <a href="../team-management.php" class="side-nav-link">
-                                <span class="menu-text">Team Members</span>
-                            </a>
-                        </li>
-                        
                     </ul>
                 </div>
             </li>

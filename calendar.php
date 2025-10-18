@@ -79,15 +79,15 @@ $credit_footer = '
                                         <p class="text-muted">Drag and drop your event or click in the calendar</p>
                                         <div class="external-event fc-event bg-success-subtle text-success"
                                             data-class="bg-success-subtle text-success">
-                                            <i class="ti ti-circle-filled me-2"></i>Online/Offline Event
+                                            <i class="ti ti-circle-filled me-2"></i>Online Event
                                         </div>
                                         <div class="external-event fc-event bg-info-subtle text-info"
                                             data-class="bg-info-subtle text-info">
-                                            <i class="ti ti-circle-filled me-2"></i>Meeting
+                                            <i class="ti ti-circle-filled me-2"></i>Offline Event
                                         </div>
                                         <div class="external-event fc-event bg-warning-subtle text-warning"
                                             data-class="bg-warning-subtle text-warning">
-                                            <i class="ti ti-circle-filled me-2"></i>Deadline
+                                            <i class="ti ti-circle-filled me-2"></i>Meeting
                                         </div>
                                         <div class="external-event fc-event bg-danger-subtle text-danger"
                                             data-class="bg-danger-subtle text-danger">
@@ -155,16 +155,27 @@ $credit_footer = '
                                         </div>
                                         <div class="col-12">
                                             <div class="mb-2">
+                                                <label class="control-label form-label" for="event-description">Event
+                                                    Description</label>
+                                                <textarea class="form-control" placeholder="Insert Event Description"
+                                                    name="description" id="event-description" rows="4"></textarea>
+                                                <div class="invalid-feedback">Please provide a valid event description
+                                                </div>
+                                                <small>Note: You can also add link here</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="mb-2">
                                                 <label class="control-label form-label"
                                                     for="event-category">Category</label>
                                                 <select class="form-select" name="category" id="event-category"
                                                     required>
-                                                    <option value="bg-success-subtle text-success">Online/Offline Event
+                                                    <option value="online">Online Event
                                                     </option>
-                                                    <option value="bg-info-subtle text-info">Meeting</option>
-                                                    <option value="bg-warning-subtle text-warning">Deadline</option>
-                                                    <option value="bg-danger-subtle text-danger">Important</option>
-                                                    <option value="bg-dark-subtle text-dark">Other</option>
+                                                    <option value="offline">Offline Event</option>
+                                                    <option value="meeting">Meeting</option>
+                                                    <option value="important">Important</option>
+                                                    <option value="other">Other</option>
                                                 </select>
                                                 <div class="invalid-feedback">Please select a valid event category</div>
                                             </div>
@@ -264,6 +275,10 @@ $credit_footer = '
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- Calendar js -->
+    <script>
+    const hasEditAccess = <?php echo $main->hasPermission('calendar_edit_others') ? 'true' : 'false'; ?>;
+    const hasDeleteAccess = <?php echo $main->hasPermission('calendar_delete_others') ? 'true' : 'false'; ?>;
+    </script>
     <script src="assets/js/pages/calendar.js"></script>
 
 </body>

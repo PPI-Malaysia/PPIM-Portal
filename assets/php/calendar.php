@@ -26,10 +26,6 @@ class Calendar extends ppim {
                 exit();
             }
             
-            if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-                $this->handleRequest();
-            }
-            
         } catch (Exception $e) {
             $this->showAlert('Constructor Error: ' . htmlspecialchars($e->getMessage()), 'danger');
         }
@@ -58,6 +54,137 @@ class Calendar extends ppim {
         }
     }
     
+    /**
+     * @param mixed $data
+     * @param int $status
+     */
+    private function sendJson($data, $status = 200) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data);
+        exit;
+    }
+
+    /**
+     * Handle incoming API requests
+     */
+    public function handleRequest() {
+        try {
+            // Read raw input once
+            $raw = file_get_contents('php://input');
+            $input = null;
+            if (!empty($raw)) {
+                $maybeJson = json_decode($raw, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($maybeJson)) {
+                    $input = $maybeJson;
+                }
+            }
+
+            // Prefer explicit action from JSON or form data
+            $action = null;
+            if (is_array($input) && isset($input['action'])) {
+                $action = $input['action'];
+                foreach ($input as $k => $v) { $_POST[$k] = $v; }
+            } else {
+                $action = isset($_POST['action']) ? $_POST['action'] : null;
+            }
+
+            // If POST JSON contains event fields but no action, treat as add
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($action) && is_array($input)) {
+                if (isset($input['title']) && isset($input['start'])) {
+                    $action = 'add';
+                    // ensure $_POST keys for existing case handlers
+                    foreach ($input as $k => $v) { $_POST[$k] = $v; }
+                }
+            }
+
+            switch ($action) {
+                case 'list':
+                    $events = $this->getAllEvents();
+                    $this->sendJson(['success' => true, 'events' => $events]);
+                    break;
+
+                case 'upcoming':
+                    $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 10;
+                    $events = $this->getUpcomingEventsForDisplay($limit);
+                    $this->sendJson(['success' => true, 'events' => $events]);
+                    break;
+
+                case 'add':
+                    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
+                    $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+                    $start = isset($_POST['start']) ? $_POST['start'] : null;
+                    $end = isset($_POST['end']) ? $_POST['end'] : null;
+                    $className = isset($_POST['className']) ? trim($_POST['className']) : '';
+
+                    if (empty($title) || empty($start)) {
+                        $this->sendJson(['success' => false, 'message' => 'Missing required fields (title or start).'], 400);
+                    }
+
+                    $newId = $this->addEvent($title, $description, $start, $className, $end);
+                    if ($newId !== false) {
+                        $this->sendJson(['success' => true, 'id' => $newId]);
+                    } else {
+                        $this->sendJson(['success' => false, 'message' => 'Insert failed.'], 500);
+                    }
+                    break;
+
+                case 'update':
+                    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+                    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
+                    $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+                    $className = isset($_POST['className']) ? trim($_POST['className']) : '';
+
+                    if ($id <= 0 || empty($title)) {
+                        $this->sendJson(['success' => false, 'message' => 'Missing required fields (id or title).'], 400);
+                    }
+
+                    if ($this->updateEvent($id, $title, $description, $className)) {
+                        $this->sendJson(['success' => true]);
+                    } else {
+                        $this->sendJson(['success' => false, 'message' => 'Update failed or not owner.'], 403);
+                    }
+                    break;
+
+                case 'delete':
+                    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+                    if ($id <= 0) {
+                        $this->sendJson(['success' => false, 'message' => 'Missing id.'], 400);
+                    }
+
+                    if ($this->deleteEvent($id)) {
+                        $this->sendJson(['success' => true]);
+                    } else {
+                        $this->sendJson(['success' => false, 'message' => 'Delete failed or not owner.'], 403);
+                    }
+                    break;
+
+                case 'move': // drag & drop update dates
+                    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+                    $start = isset($_POST['start']) ? $_POST['start'] : null;
+                    $end = isset($_POST['end']) ? $_POST['end'] : null;
+
+                    if ($id <= 0 || empty($start)) {
+                        $this->sendJson(['success' => false, 'message' => 'Missing id or start.'], 400);
+                    }
+
+                    if ($this->updateEventDates($id, $start, $end)) {
+                        $this->sendJson(['success' => true]);
+                    } else {
+                        $this->sendJson(['success' => false, 'message' => 'Update dates failed or not owner.'], 403);
+                    }
+                    break;
+
+                default:
+                    $this->sendJson(['success' => false, 'message' => 'Unknown action.'], 400);
+                    break;
+            }
+        } catch (Exception $e) {
+            error_log("handleRequest error: " . $e->getMessage());
+            $this->sendJson(['success' => false, 'message' => 'Server error.'], 500);
+        }
+    }
+
     
     /**
      * Check if user has access to student database
@@ -85,9 +212,10 @@ class Calendar extends ppim {
             $events[] = [
                 'id' => $row['id'],
                 'title' => $row['title'],
+                'description' => $row['description'],
                 'start' => $row['start'],
                 'end' => $row['end'] ? $row['end'] : $row['start'],
-                'className' => $row['class_name'],
+                'category' => $row['event_type'],
                 'extendedProps' => [
                     'user_id' => $row['user_id'],
                     'creator_name' => $row['creator_name']
@@ -123,9 +251,10 @@ class Calendar extends ppim {
             $events[] = [
                 'id' => $row['id'],
                 'title' => $row['title'],
+                'description' => $row['description'],
                 'start' => $row['start'],
                 'end' => $row['end'] ? $row['end'] : $row['start'],
-                'className' => $row['class_name'],
+                'category' => $row['event_type'],
                 'extendedProps' => [
                     'user_id' => $row['user_id'],
                     'creator_name' => $row['creator_name']
@@ -201,9 +330,9 @@ class Calendar extends ppim {
             $formattedEvents[] = [
                 'id' => $event['id'],
                 'title' => $event['title'],
+                'description' => $event['description'],
                 'start' => $event['start'],
                 'end' => $event['end'],
-                'className' => $event['className'],
                 'creator_name' => $event['extendedProps']['creator_name'],
                 'user_id' => $event['extendedProps']['user_id'],
                 'formatted_date' => $this->formatEventDate($event['start'], $event['end']),
@@ -218,12 +347,13 @@ class Calendar extends ppim {
     /**
      * Add a new calendar event
      * @param string $title
+     * @param string $description
      * @param string $start
      * @param string $className
      * @param string $end
      * @return int|bool
      */
-    public function addEvent($title, $start, $className, $end = null) {
+    public function addEvent($title, $description, $start, $className, $end = null) {
         // Format the datetime values for MySQL
         $formattedStart = $this->formatDatetime($start);
         $formattedEnd = $this->formatDatetime($end);
@@ -232,9 +362,9 @@ class Calendar extends ppim {
         error_log("Original start: $start, Formatted: $formattedStart");
         error_log("Original end: $end, Formatted: $formattedEnd");
         
-        $stmt = $this->conn->prepare("INSERT INTO calendar_events (user_id, title, start, end, class_name) 
-                                      VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("issss", $this->user_id, $title, $formattedStart, $formattedEnd, $className);
+        $stmt = $this->conn->prepare("INSERT INTO calendar_events (user_id, title, description, start, end, event_type) 
+                                      VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $this->user_id, $title, $description, $formattedStart, $formattedEnd, $className);
         
         if ($stmt->execute()) {
             return $this->conn->insert_id;
@@ -249,18 +379,48 @@ class Calendar extends ppim {
      * @param string $className
      * @return bool
      */
-    public function updateEvent($id, $title, $className) {
-        // First check if user owns this event
-        if (!$this->isEventOwner($id)) {
+    public function updateEvent($id, $title, $description, $className) {
+        // Check if user owns the event or has permission to edit others' events
+        if (!$this->isEventOwner($id) && !$this->hasPermission('calendar_edit_others')) {
+            error_log("updateEvent: permission denied for user {$this->user_id} on event {$id}");
             return false;
         }
-        
-        $stmt = $this->conn->prepare("UPDATE calendar_events 
-                                      SET title = ?, class_name = ? 
-                                      WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("ssii", $title, $className, $id, $this->user_id);
-        
-        return $stmt->execute();
+
+        if ($this->hasPermission('calendar_edit_others')) {
+            // User can edit any event
+            $stmt = $this->conn->prepare("UPDATE calendar_events 
+                                          SET title = ?, description = ?, event_type = ? 
+                                          WHERE id = ?");
+            if (!$stmt) {
+                error_log("updateEvent prepare failed (admin): " . $this->conn->error);
+                return false;
+            }
+            $stmt->bind_param("sssi", $title, $description, $className, $id);
+        } else {
+            // User can only edit their own event
+            $stmt = $this->conn->prepare("UPDATE calendar_events 
+                                          SET title = ?, description = ?, event_type = ? 
+                                          WHERE id = ? AND user_id = ?");
+            if (!$stmt) {
+                error_log("updateEvent prepare failed: " . $this->conn->error);
+                return false;
+            }
+            $stmt->bind_param("sssii", $title, $description, $className, $id, $this->user_id);
+        }
+
+        if (!$stmt->execute()) {
+            error_log("updateEvent execute failed: " . $stmt->error);
+            return false;
+        }
+
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+
+        if ($affected === 0) {
+            error_log("updateEvent: no rows affected for event {$id} (maybe no changes).");
+        }
+
+        return $affected >= 0; // true if query ran (0 = no change, >0 = changed)
     }
     
     /**
@@ -269,15 +429,19 @@ class Calendar extends ppim {
      * @return bool
      */
     public function deleteEvent($id) {
-        // First check if user owns this event
-        if (!$this->isEventOwner($id)) {
+        // First check if user owns this event or has permission to delete others' events
+        if (!$this->isEventOwner($id) && !$this->hasPermission('calendar_delete_others')) {
             return false;
         }
-        
-        $stmt = $this->conn->prepare("DELETE FROM calendar_events 
-                                      WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("ii", $id, $this->user_id);
-        
+
+        if ($this->hasPermission('calendar_delete_others')) {
+            $stmt = $this->conn->prepare("DELETE FROM calendar_events WHERE id = ?");
+            $stmt->bind_param("i", $id);
+        } else {
+            $stmt = $this->conn->prepare("DELETE FROM calendar_events WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("ii", $id, $this->user_id);
+        }
+
         return $stmt->execute();
     }
     
@@ -304,25 +468,66 @@ class Calendar extends ppim {
      * @return bool
      */
     public function updateEventDates($id, $start, $end = null) {
-        // First check if user owns this event
-        if (!$this->isEventOwner($id)) {
+        if (!$this->isEventOwner($id) && !$this->hasPermission('calendar_edit_others')) {
+            error_log("updateEventDates: permission denied for user {$this->user_id} on event {$id}");
             return false;
         }
-        
-        // Format the datetime values for MySQL
+
         $formattedStart = $this->formatDatetime($start);
         $formattedEnd = $this->formatDatetime($end);
-        
-        // Log the original and formatted values for debugging
-        error_log("Update dates - Original start: $start, Formatted: $formattedStart");
-        error_log("Update dates - Original end: $end, Formatted: $formattedEnd");
-        
-        $stmt = $this->conn->prepare("UPDATE calendar_events 
-                                      SET start = ?, end = ? 
-                                      WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("ssii", $formattedStart, $formattedEnd, $id, $this->user_id);
-        
-        return $stmt->execute();
+
+        if ($this->hasPermission('calendar_edit_others')) {
+            $stmt = $this->conn->prepare("UPDATE calendar_events 
+                                          SET start = ?, end = ? 
+                                          WHERE id = ?");
+            if (!$stmt) {
+                error_log("updateEventDates prepare failed (admin): " . $this->conn->error);
+                return false;
+            }
+            $stmt->bind_param("ssi", $formattedStart, $formattedEnd, $id);
+        } else {
+            $stmt = $this->conn->prepare("UPDATE calendar_events 
+                                          SET start = ?, end = ? 
+                                          WHERE id = ? AND user_id = ?");
+            if (!$stmt) {
+                error_log("updateEventDates prepare failed: " . $this->conn->error);
+                return false;
+            }
+            $stmt->bind_param("ssii", $formattedStart, $formattedEnd, $id, $this->user_id);
+        }
+
+        if (!$stmt->execute()) {
+            error_log("updateEventDates execute failed: " . $stmt->error);
+            return false;
+        }
+
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+
+        if ($affected === 0) {
+            error_log("updateEventDates: no rows affected for event {$id} (maybe same dates).");
+        }
+
+        return $affected >= 0;
     }
+
+
+    public function getEventById($id) {
+        $stmt = $this->conn->prepare("SELECT e.*, u.name as creator_name FROM calendar_events e LEFT JOIN user u ON e.user_id = u.id WHERE e.id = ? LIMIT 1");
+        if (!$stmt) {
+            error_log("getEventById prepare failed: " . $this->conn->error);
+            return null;
+        }
+        $stmt->bind_param("i", $id);
+        if (!$stmt->execute()) {
+            error_log("getEventById execute failed: " . $stmt->error);
+            return null;
+        }
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+        return $row ? $row : null;
+    }
+
 }
 ?>

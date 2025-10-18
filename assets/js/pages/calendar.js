@@ -65,21 +65,20 @@ class CalendarSchedule {
      * @returns {string} CSS class name
      */
     getEventClassName(event) {
-        // Try all possible places where the class name might be stored
-        if (event.classNames && event.classNames.length > 0) {
-            return event.classNames[0];
-        } else if (event.className) {
-            return Array.isArray(event.className)
-                ? event.className[0]
-                : event.className;
-        } else if (event.extendedProps && event.extendedProps.className) {
-            return event.extendedProps.className;
-        } else if (event.extendedProps && event.extendedProps.class_name) {
-            return event.extendedProps.class_name;
-        } else {
-            console.warn("No class name found for event:", event);
-            return "bg-dark-subtle text-dark"; // Default fallback
-        }
+        // Map the category values to class names
+        const classMap = {
+            online: "bg-success-subtle text-success",
+            offline: "bg-info-subtle text-info",
+            meeting: "bg-warning-subtle text-warning",
+            important: "bg-danger-subtle text-danger",
+            other: "bg-dark-subtle text-dark",
+        };
+
+        // Get the category from the event
+        const category = event.extendedProps?.category || "other";
+
+        // Return the mapped class or default
+        return classMap[category] || classMap["other"];
     }
 
     /**
@@ -111,13 +110,30 @@ class CalendarSchedule {
 
         // Set common fields regardless of ownership
         document.getElementById("event-title").value = this.selectedEvent.title;
+        document.getElementById("event-description").value =
+            this.selectedEvent.extendedProps.description || "-";
 
         // Get the event class name
         const eventClass = this.getEventClassName(this.selectedEvent);
+        const categoryMap = {
+            "bg-success-subtle text-success": "online",
+            "bg-info-subtle text-info": "offline",
+            "bg-warning-subtle text-warning": "meeting",
+            "bg-danger-subtle text-danger": "important",
+            "bg-dark-subtle text-dark": "other",
+        };
+
+        // Find the corresponding category value
+        const category =
+            this.selectedEvent.extendedProps?.category ||
+            Object.entries(categoryMap).find(([className]) =>
+                eventClass.includes(className)
+            )?.[1] ||
+            "other";
         console.log("Event class value:", eventClass);
 
         // Set the category dropdown value
-        document.getElementById("event-category").value = eventClass;
+        document.getElementById("event-category").value = category;
 
         // If direct match fails, try to find the closest option
         if (document.getElementById("event-category").selectedIndex === -1) {
@@ -159,6 +175,8 @@ class CalendarSchedule {
         // Set field states based on ownership
         if (isOwner) {
             this.setupOwnerView();
+        } else if (hasEditAccess) {
+            this.setupEditorView();
         } else {
             this.setupNonOwnerView();
         }
@@ -173,6 +191,7 @@ class CalendarSchedule {
         this.btnDeleteEvent.style.display = "block";
         this.modalTitle.textContent = "Edit Event";
         document.getElementById("event-title").disabled = false;
+        document.getElementById("event-description").disabled = false;
         document.getElementById("event-category").disabled = false;
         document.getElementById("btn-save-event").disabled = false;
         document.getElementById("event-start-date").disabled = false;
@@ -186,12 +205,36 @@ class CalendarSchedule {
     }
 
     /**
+     * Set up the modal view for users who can edit other's events
+     */
+    setupEditorView() {
+        this.btnDeleteEvent.style.display = hasDeleteAccess ? "block" : "none";
+        this.modalTitle.textContent = "Edit Event";
+        document.getElementById("event-title").disabled = false;
+        document.getElementById("event-description").disabled = false;
+        document.getElementById("event-category").disabled = false;
+        document.getElementById("btn-save-event").disabled = false;
+        document.getElementById("event-start-date").disabled = false;
+        document.getElementById("event-end-date").disabled = false;
+
+        // Show creator info
+        const creatorInfo = document.getElementById("event-creator");
+        if (creatorInfo) {
+            creatorInfo.textContent =
+                "Created by: " +
+                (this.selectedEvent.extendedProps?.creator_name || "Unknown");
+            creatorInfo.style.display = "block";
+        }
+    }
+
+    /**
      * Set up the modal view for non-owners (view only)
      */
     setupNonOwnerView() {
         this.btnDeleteEvent.style.display = "none";
         this.modalTitle.textContent = "View Event";
         document.getElementById("event-title").disabled = true;
+        document.getElementById("event-description").disabled = true;
         document.getElementById("event-category").disabled = true;
         document.getElementById("btn-save-event").disabled = true;
         document.getElementById("event-start-date").disabled = true;
@@ -297,10 +340,12 @@ class CalendarSchedule {
      */
     enableFormFields() {
         const titleField = document.getElementById("event-title");
+        const descriptionField = document.getElementById("event-description");
         const categoryField = document.getElementById("event-category");
         const saveButton = document.getElementById("btn-save-event");
 
         if (titleField) titleField.disabled = false;
+        if (descriptionField) descriptionField.disabled = false;
         if (categoryField) categoryField.disabled = false;
         if (saveButton) saveButton.disabled = false;
 
@@ -407,13 +452,6 @@ class CalendarSchedule {
             return;
         }
 
-        // For existing events, check if current user is the owner
-        if (info.event.extendedProps.user_id != this.currentUserID) {
-            info.revert(); // Revert the event to its original position
-            this.showToast("You can only modify your own events", "error");
-            return;
-        }
-
         // Update event dates via API
         this.updateEventDates(eventId, start, end, info);
     }
@@ -427,6 +465,7 @@ class CalendarSchedule {
 
         const title = info.event.title;
         const className = info.event.classNames[0];
+        const description = info.event.description || "-";
         const start = info.event.start;
         const end = info.event.end;
 
@@ -436,6 +475,7 @@ class CalendarSchedule {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: title,
+                description: description,
                 start: start.toISOString(),
                 className: className,
                 end: end ? end.toISOString() : null,
@@ -510,13 +550,6 @@ class CalendarSchedule {
         const start = info.event.start;
         const end = info.event.end;
 
-        // Check if current user is the owner
-        if (info.event.extendedProps.user_id != this.currentUserID) {
-            info.revert(); // Revert the event to its original position
-            this.showToast("You can only modify your own events", "error");
-            return;
-        }
-
         // Update event dates via API
         this.updateEventDates(eventId, start, end, info);
     }
@@ -531,7 +564,18 @@ class CalendarSchedule {
         // Create new event from dropped external item
         const dropDate = info.date.toISOString();
         const title = info.draggedEl.innerText.trim();
-        const className = info.draggedEl.getAttribute("data-class");
+        const category = info.draggedEl.getAttribute("data-class");
+
+        // Map the category to the proper class name
+        const categoryToClass = {
+            online: "bg-success-subtle text-success",
+            offline: "bg-info-subtle text-info",
+            meeting: "bg-warning-subtle text-warning",
+            important: "bg-danger-subtle text-danger",
+            other: "bg-dark-subtle text-dark",
+        };
+
+        const className = categoryToClass[category] || categoryToClass["other"];
 
         // Create event via API
         fetch(this.apiPath, {
@@ -539,8 +583,10 @@ class CalendarSchedule {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: title,
+                description: "-",
                 start: dropDate,
-                className: className,
+                className: className, // Send the mapped class name
+                category: category, // Also send the original category
                 end: null,
             }),
         })
@@ -602,6 +648,8 @@ class CalendarSchedule {
                 if (this.calendarObj) {
                     this.calendarObj.removeAllEvents();
                     data.forEach((event) => {
+                        const isOwner = event.extendedProps && event.extendedProps.user_id == this.currentUserID;
+                        event.editable = isOwner || hasEditAccess;
                         this.calendarObj.addEvent(event);
                     });
                 }
@@ -634,6 +682,7 @@ class CalendarSchedule {
 
         const title = document.getElementById("event-title").value;
         const className = document.getElementById("event-category").value;
+        const description = document.getElementById("event-description").value;
 
         // Get start and end dates from the datetime pickers
         const startDateStr = document.getElementById("event-start-date").value;
@@ -649,12 +698,19 @@ class CalendarSchedule {
         if (this.selectedEvent) {
             this.updateExistingEvent(
                 title,
+                description,
                 className,
                 startDate,
                 adjustedEndDate
             );
         } else {
-            this.createNewEvent(title, className, startDate, adjustedEndDate);
+            this.createNewEvent(
+                title,
+                description,
+                className,
+                startDate,
+                adjustedEndDate
+            );
         }
     }
 
@@ -696,11 +752,11 @@ class CalendarSchedule {
      * @param {Date} startDate - Event start date
      * @param {Date} endDate - Event end date
      */
-    updateExistingEvent(title, className, startDate, endDate) {
+    updateExistingEvent(title, description, className, startDate, endDate) {
         console.log("Updating existing event:", this.selectedEvent.id);
 
         // Check if current user is the owner
-        if (this.selectedEvent.extendedProps.user_id != this.currentUserID) {
+        if (this.selectedEvent.extendedProps.user_id != this.currentUserID && !hasEditAccess) {
             this.showToast("You can only modify your own events", "error");
             return;
         }
@@ -708,6 +764,7 @@ class CalendarSchedule {
         console.log("Updating event with new data:", {
             id: this.selectedEvent.id,
             title: title,
+            description: description,
             className: className,
             start: startDate ? startDate.toISOString() : null,
             end: endDate ? endDate.toISOString() : null,
@@ -720,6 +777,7 @@ class CalendarSchedule {
             body: JSON.stringify({
                 id: this.selectedEvent.id,
                 title: title,
+                description: description,
                 className: className,
                 start: startDate ? startDate.toISOString() : null,
                 end: endDate ? endDate.toISOString() : null,
@@ -754,7 +812,7 @@ class CalendarSchedule {
      * @param {Date} startDate - Event start date
      * @param {Date} endDate - Event end date
      */
-    createNewEvent(title, className, startDate, endDate) {
+    createNewEvent(title, description, className, startDate, endDate) {
         console.log("Creating new event with data:", {
             title: title,
             start: startDate ? startDate.toISOString() : null,
@@ -768,6 +826,7 @@ class CalendarSchedule {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: title,
+                description: description,
                 start: startDate ? startDate.toISOString() : null,
                 className: className,
                 end: endDate ? endDate.toISOString() : null,
@@ -811,14 +870,27 @@ class CalendarSchedule {
 
         if (externalEvents && FullCalendar.Draggable) {
             try {
+                // Define the mapping for event types to classes
+                const categoryToClass = {
+                    online: "bg-success-subtle text-success",
+                    offline: "bg-info-subtle text-info",
+                    meeting: "bg-warning-subtle text-warning",
+                    important: "bg-danger-subtle text-danger",
+                    other: "bg-dark-subtle text-dark",
+                };
+
                 new FullCalendar.Draggable(externalEvents, {
                     itemSelector: ".external-event",
                     eventData: (el) => {
+                        const category = el.getAttribute("data-class");
                         console.log("External event dragged:", el);
                         return {
-                            title: el.innerText,
-                            classNames: el.getAttribute("data-class"),
+                            title: el.innerText.replace(/^\s*\S+\s+/, ""), // Remove the icon text
+                            classNames:
+                                categoryToClass[category] ||
+                                categoryToClass["other"],
                             extendedProps: {
+                                category: category,
                                 user_id: this.currentUserID,
                                 creator_name: this.currentUserName,
                             },
@@ -841,7 +913,7 @@ class CalendarSchedule {
         if (!this.selectedEvent) return;
 
         // Check if current user is the owner
-        if (this.selectedEvent.extendedProps.user_id != this.currentUserID) {
+        if (this.selectedEvent.extendedProps.user_id != this.currentUserID && !hasDeleteAccess) {
             this.showToast("You can only delete your own events", "error");
             return;
         }
@@ -921,6 +993,45 @@ class CalendarSchedule {
                 eventDrop: this.handleEventDrop,
                 eventResize: this.handleEventResize,
                 drop: this.handleExternalDrop,
+                eventContent: function (arg) {
+                    let creatorName = arg.event.extendedProps.creator_name || '';
+                    let title = arg.event.title;
+                    if (creatorName) {
+                        return { html: `(${creatorName}) ${title}` };
+                    } else {
+                        return { html: title };
+                    }
+                },
+                eventClassNames: function (arg) {
+                    // Check if event has className property
+                    if (
+                        arg.event.extendedProps &&
+                        arg.event.extendedProps.category
+                    ) {
+                        const categoryToClass = {
+                            online: "bg-success-subtle text-success",
+                            offline: "bg-info-subtle text-info",
+                            meeting: "bg-warning-subtle text-warning",
+                            important: "bg-danger-subtle text-danger",
+                            other: "bg-dark-subtle text-dark",
+                        };
+                        return (
+                            categoryToClass[arg.event.extendedProps.category] ||
+                            categoryToClass["other"]
+                        );
+                    }
+                    // Return the existing classNames if present
+                    return arg.event.classNames || [];
+                },
+                eventDidMount: function (info) {
+                    // Log the applied classes for debugging
+                    console.log(
+                        "Event mounted:",
+                        info.event.title,
+                        "Classes:",
+                        info.el.className
+                    );
+                },
             });
 
             console.log("Calendar object created, rendering...");
