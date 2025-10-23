@@ -1,9 +1,9 @@
 <?php
 // calendar.php - Calendar functionality
 
-// Define ROOT_PATH if not already defined
+// Define ROOT_PATH if not already defined (relative to this file: assets/php/calendar.php)
 if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+    define('ROOT_PATH', realpath(__DIR__ . '/../..') . '/');
 }
 
 require_once(ROOT_PATH . "assets/php/main.php");
