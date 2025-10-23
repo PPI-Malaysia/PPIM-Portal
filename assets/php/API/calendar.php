@@ -67,13 +67,14 @@ switch ($method) {
             
             $title = $data['title'];
             $start = $data['start'];
+            $description = isset($data['description']) ? $data['description'] : '';
             $className = $data['className'];
             $end = isset($data['end']) ? $data['end'] : null;
             
             error_log("API: Creating event - Title: $title, Start: $start, Class: $className");
             
             // Updated parameter order to match the fixed method signature
-            $id = $calendar->addEvent($title, $start, $className, $end);
+            $id = $calendar->addEvent($title, $description, $start, $className, $end);
             
             if ($id) {
                 error_log("API: Event created successfully with ID: $id");
@@ -91,110 +92,114 @@ switch ($method) {
             echo json_encode(['error' => 'Exception: ' . $e->getMessage()]);
         }
         break;
-        
+    
         case 'PUT':
-            // Update an event
-            try {
-                $data = json_decode(file_get_contents('php://input'), true);
-                
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    error_log("API Error: Invalid JSON - " . json_last_error_msg());
-                    echo json_encode(['error' => 'Invalid JSON data: ' . json_last_error_msg()]);
-                    exit;
-                }
-                
-                if (!isset($data['id'])) {
-                    error_log("API Error: Missing event ID");
-                    echo json_encode(['error' => 'Missing event ID']);
-                    exit;
-                }
-                
-                $id = $data['id'];
-                error_log("API: Updating event ID: $id");
-                
-                // Check what type of update this is
-                if (isset($data['title']) && isset($data['className']) && isset($data['start'])) {
-                    // This is a full update from the form (both details and dates)
-                    $title = $data['title'];
-                    $className = $data['className'];
-                    $start = $data['start'];
-                    $end = isset($data['end']) ? $data['end'] : null;
-                    
-                    error_log("API: Full event update - Title: $title, Class: $className, Start: $start");
-                    
-                    // First update the details
-                    $success1 = $calendar->updateEvent($id, $title, $className);
-                    
-                    // Then update the dates
-                    $success2 = $calendar->updateEventDates($id, $start, $end);
-                    
-                    $success = $success1 && $success2;
-                    
-                    if ($success) {
-                        error_log("API: Event fully updated successfully");
-                        echo json_encode([
-                            'success' => true,
-                            'message' => 'Event updated successfully'
-                        ]);
-                    } else {
-                        error_log("API Error: Failed to update event or permission denied");
-                        echo json_encode([
-                            'error' => 'Failed to update event or you do not have permission'
-                        ]);
-                    }
-                }
-                // If updating dates only (drag & drop)
-                else if (isset($data['start'])) {
-                    $start = $data['start'];
-                    $end = isset($data['end']) ? $data['end'] : null;
-                    
-                    error_log("API: Updating event dates only - Start: $start, End: " . ($end ?? 'null'));
-                    
-                    $success = $calendar->updateEventDates($id, $start, $end);
-                    
-                    if ($success) {
-                        error_log("API: Event dates updated successfully");
-                        echo json_encode([
-                            'success' => true,
-                            'message' => 'Event dates updated successfully'
-                        ]);
-                    } else {
-                        error_log("API Error: Failed to update event dates or permission denied");
-                        echo json_encode([
-                            'error' => 'Failed to update event dates or you do not have permission'
-                        ]);
-                    }
-                }
-                // If updating event details only
-                else if (isset($data['title']) && isset($data['className'])) {
-                    $title = $data['title'];
-                    $className = $data['className'];
-                    
-                    error_log("API: Updating event details only - Title: $title, Class: $className");
-                    
-                    $success = $calendar->updateEvent($id, $title, $className);
-                    
-                    if ($success) {
-                        error_log("API: Event updated successfully");
-                        echo json_encode([
-                            'success' => true,
-                            'message' => 'Event updated successfully'
-                        ]);
-                    } else {
-                        error_log("API Error: Failed to update event or permission denied");
-                        echo json_encode([
-                            'error' => 'Failed to update event or you do not have permission'
-                        ]);
-                    }
-                } else {
-                    error_log("API Error: Missing required fields for update");
-                    echo json_encode(['error' => 'Missing required fields for update']);
-                }
-            } catch (Exception $e) {
-                error_log("API Exception updating event: " . $e->getMessage());
-                echo json_encode(['error' => 'Exception: ' . $e->getMessage()]);
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("API Error: Invalid JSON - " . json_last_error_msg());
+                echo json_encode(['error' => 'Invalid JSON data: ' . json_last_error_msg()]);
+                exit;
             }
-            break;
+
+            if (!isset($data['id'])) {
+                error_log("API Error: Missing event ID");
+                echo json_encode(['error' => 'Missing event ID']);
+                exit;
+            }
+
+            $id = (int)$data['id'];
+            error_log("API: Updating event ID: $id");
+
+            $updatedSuccessfully = false;
+            $errors = [];
+
+            // Full update: details + dates
+            if (isset($data['title']) && isset($data['className']) && isset($data['start'])) {
+                $title = trim($data['title']);
+                $description = isset($data['description']) ? trim($data['description']) : '';
+                $className = trim($data['className']);
+                $start = $data['start'];
+                $end = isset($data['end']) ? $data['end'] : null;
+
+                error_log("API: Full event update - Title: $title, Class: $className, Start: $start, End: " . ($end ?? 'null'));
+
+                $successDetails = $calendar->updateEvent($id, $title, $description, $className);
+                $successDates = $calendar->updateEventDates($id, $start, $end);
+
+                if ($successDetails && $successDates) {
+                    $updatedSuccessfully = true;
+                } else {
+                    $errors[] = 'Failed to update details or dates or permission denied';
+                    error_log("API Error: full update failed for ID $id. details:$successDetails dates:$successDates");
+                }
+            }
+            // Dates only (drag & drop)
+            else if (isset($data['start'])) {
+                $start = $data['start'];
+                $end = isset($data['end']) ? $data['end'] : null;
+
+                error_log("API: Updating event dates only - Start: $start, End: " . ($end ?? 'null'));
+
+                $successDates = $calendar->updateEventDates($id, $start, $end);
+
+                if ($successDates) {
+                    $updatedSuccessfully = true;
+                } else {
+                    $errors[] = 'Failed to update event dates or permission denied';
+                    error_log("API Error: updateEventDates failed for ID $id");
+                }
+            }
+            // Details only
+            else if (isset($data['title']) && isset($data['className'])) {
+                $title = trim($data['title']);
+                $description = isset($data['description']) ? trim($data['description']) : '';
+                $className = trim($data['className']);
+
+                error_log("API: Updating event details only - Title: $title, Class: $className");
+
+                $successDetails = $calendar->updateEvent($id, $title, $description, $className);
+
+                if ($successDetails) {
+                    $updatedSuccessfully = true;
+                } else {
+                    $errors[] = 'Failed to update event details or permission denied';
+                    error_log("API Error: updateEvent failed for ID $id");
+                }
+            } else {
+                error_log("API Error: Missing required fields for update");
+                echo json_encode(['error' => 'Missing required fields for update']);
+                exit;
+            }
+
+            // Respond
+            if ($updatedSuccessfully) {
+                $updated = $calendar->getEventById($id);
+                if ($updated) {
+                    echo json_encode([
+                        'success' => true,
+                        'event' => $updated,
+                        'message' => 'Event updated successfully'
+                    ]);
+                } else {
+                    error_log("API: Updated but unable to fetch event {$id}");
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Event updated but fetch failed'
+                    ]);
+                }
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'errors' => $errors,
+                    'message' => 'Update failed'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("API Exception updating event: " . $e->getMessage());
+            echo json_encode(['error' => 'Exception: ' . $e->getMessage()]);
+        }
+        break;
 
     case 'DELETE':
         // Delete an event

@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+/*
 if (preg_match('#^https://([a-z0-9-]+\.)*ppimalaysia\.id$#i', $origin)) {
     header("Access-Control-Allow-Origin: $origin");
     header("Vary: Origin");
@@ -9,6 +10,7 @@ if (preg_match('#^https://([a-z0-9-]+\.)*ppimalaysia\.id$#i', $origin)) {
     echo json_encode(['success'=>false,'error'=>['message'=>'Origin not allowed']]);
     exit;
 }
+    */
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -35,7 +37,26 @@ try {
     }
 
     // Get all events with full details
-    $eventsQuery = "SELECT calendar_events.id, user.name, title, start, end, class_name, created_at, updated_at FROM calendar_events JOIN user ON calendar_events.user_id = user.id ORDER BY start ASC";
+    $eventsQuery = "SELECT 
+        calendar_events.id, 
+        user.name, 
+        calendar_events.title, 
+        calendar_events.description, 
+        calendar_events.start, 
+        calendar_events.end, 
+        calendar_events.event_type, 
+        calendar_events.created_at, 
+        calendar_events.updated_at,
+        CASE 
+            WHEN user.type = 1000 THEN 'true' 
+            ELSE 'false' 
+        END AS isCampus
+    FROM 
+        calendar_events 
+    JOIN 
+        user ON calendar_events.user_id = user.id 
+    ORDER BY 
+        calendar_events.start ASC";
     $eventsResult = $conn->query($eventsQuery);
     
     if (!$eventsResult) {
@@ -48,11 +69,28 @@ try {
     }
 
     // Get active events (currently happening)
-    $activeEventsQuery = "SELECT calendar_events.id, calendar_events.user_id, user.name, title, start, end, class_name, created_at, updated_at 
-                         FROM calendar_events 
-                         JOIN user ON calendar_events.user_id = user.id
-                         WHERE start <= NOW() AND end >= NOW() 
-                         ORDER BY start ASC";
+    $activeEventsQuery = "SELECT
+    calendar_events.id,
+    user.name,
+    calendar_events.title,
+    calendar_events.description,
+    calendar_events.start,
+    calendar_events.end,
+    calendar_events.event_type,
+    calendar_events.created_at,
+    calendar_events.updated_at,
+    CASE
+        WHEN user.type = 1000 THEN 'true'
+        ELSE 'false'
+    END AS isCampus 
+FROM
+    calendar_events
+JOIN
+    user ON calendar_events.user_id = user.id
+WHERE
+    calendar_events.start <= NOW() AND calendar_events.end >= NOW()
+ORDER BY
+    calendar_events.start ASC";
     $activeEventsResult = $conn->query($activeEventsQuery);
     
     if (!$activeEventsResult) {

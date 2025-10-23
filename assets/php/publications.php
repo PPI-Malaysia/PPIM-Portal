@@ -1,6 +1,6 @@
 <?php
 // publications.php - Publications management class
-require_once("content-management.php");
+require_once(__DIR__."/content-management.php");
 
 class Publications extends ContentManagement {
     
@@ -548,4 +548,3 @@ class Publications extends ContentManagement {
     }
 }
 ?>
-

@@ -106,7 +106,7 @@ class StudentDatabase extends ppim {
     /**
      * Show alert message using Toastify.js
      */
-    private function showAlert($message, $type = 'success') {
+    protected function showAlert($message, $type = 'success') {
         $configs = [
             'success' => [
                 'background' => '#28a745',

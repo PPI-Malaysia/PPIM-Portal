@@ -1,6 +1,6 @@
 <?php
 // credentials.php - User credential management functionality
-require_once("main.php");
+require_once(__DIR__."/main.php");
 
 class Credentials extends ppim {
     /**
