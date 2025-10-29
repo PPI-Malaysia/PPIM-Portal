@@ -3,8 +3,9 @@
 header('Content-Type: application/json');
 session_start();
 
+// Define ROOT_PATH relative to this file's location (assets/php/page/publication_operations.php)
 if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+    define('ROOT_PATH', realpath(__DIR__ . '/../../..') . '/');
 }
 
 try {

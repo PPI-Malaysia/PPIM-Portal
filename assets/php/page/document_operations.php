@@ -46,20 +46,42 @@ switch ($action) {
             exit;
         }
         
+        // Validate file upload
+        if (!isset($_FILES['file']) || empty($_FILES['file']['tmp_name'])) {
+            echo json_encode(['success' => false, 'message' => 'No file uploaded or file upload failed', 'debug' => $_FILES]);
+            exit;
+        }
+        
+        if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            $errorMessages = [
+                UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE',
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+                UPLOAD_ERR_EXTENSION => 'File upload stopped by extension'
+            ];
+            $errorMsg = $errorMessages[$_FILES['file']['error']] ?? 'Unknown upload error';
+            echo json_encode(['success' => false, 'message' => $errorMsg, 'error_code' => $_FILES['file']['error']]);
+            exit;
+        }
+        
         $data = [
             'title' => $_POST['title'] ?? '',
             'description' => $_POST['description'] ?? '',
             'category' => $_POST['category'] ?? ''
         ];
         
-        $file = isset($_FILES['file']) ? $_FILES['file'] : null;
+        $file = $_FILES['file'];
         
         $id = $documents->createDocument($data, $file);
         
         if ($id) {
             echo json_encode(['success' => true, 'message' => 'Document created successfully', 'id' => $id]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to create document']);
+            $error = $documents->getLastError() ?? 'Failed to create document - check server logs for details';
+            echo json_encode(['success' => false, 'message' => $error]);
         }
         break;
         

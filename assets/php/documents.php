@@ -4,6 +4,16 @@ require_once(__DIR__."/content-management.php");
 
 class Documents extends ContentManagement {
     
+    private $lastError = null;
+    
+    /**
+     * Get last error message
+     * @return string|null
+     */
+    public function getLastError() {
+        return $this->lastError;
+    }
+    
     /**
      * Get all documents with pagination and filters
      * @param int $page
@@ -133,14 +143,15 @@ class Documents extends ContentManagement {
      */
     public function createDocument($data, $file = null) {
         if (!$this->canCreate()) {
+            $this->lastError = 'No permission to create documents';
             return false;
         }
         
         $fileUrl = null;
         $fileSize = null;
         $fileType = null;
-        
-        // Handle file upload if provided
+        $metadataArray = $this->normalizeMetadata($data['metadata'] ?? []);
+		
         if ($file && isset($file['tmp_name']) && !empty($file['tmp_name'])) {
             $allowedTypes = [
                 'application/pdf',
@@ -149,30 +160,43 @@ class Documents extends ContentManagement {
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'application/vnd.ms-excel'
             ];
-            
-            $uploadResult = $this->handleFileUpload($file, 'documents', $allowedTypes, 20971520); // 20MB max
-            
+			
+            $uploadResult = $this->handleFileUpload($file, 'documents', $allowedTypes, 20971520);
+			
             if (!$uploadResult['success']) {
+                $this->lastError = $uploadResult['error'] ?? 'File upload failed';
+                error_log("Document upload failed: " . $this->lastError);
                 return false;
             }
-            
+			
             $fileUrl = $uploadResult['path'];
-            $fileSize = $this->formatFileSize($file['size']);
-            
-            // Get file type
-            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $fileType = $extension;
+            $fileSize = $this->formatFileSize($uploadResult['sizeBytes'] ?? ($file['size'] ?? 0));
+            $fileType = strtolower(pathinfo($uploadResult['filename'] ?? ($file['name'] ?? ''), PATHINFO_EXTENSION));
+			
+            $fileMeta = [
+                'original_name' => $uploadResult['originalName'] ?? ($file['name'] ?? null),
+                'size_bytes' => $uploadResult['sizeBytes'] ?? ($file['size'] ?? null),
+                'mime_type' => $uploadResult['mimeType'] ?? null,
+                'relative_path' => $uploadResult['relativePath'] ?? null,
+                'uploaded_at' => date('c')
+            ];
+            $metadataArray = array_merge($metadataArray, array_filter($fileMeta, function ($value) {
+                return $value !== null;
+            }));
         } elseif (isset($data['file_url'])) {
-            // File URL provided directly (for external files)
             $fileUrl = $data['file_url'];
             $fileSize = $data['file_size'] ?? null;
             $fileType = $data['file_type'] ?? null;
+            $metadataArray = array_merge($metadataArray, array_filter([
+                'original_name' => $data['file_name'] ?? null,
+                'mime_type' => $data['file_mime'] ?? null,
+                'size_bytes' => isset($data['file_size_bytes']) ? (int)$data['file_size_bytes'] : null
+            ]));
         }
-        
-        // Parse metadata if JSON string
-        $metadata = null;
-        if (isset($data['metadata'])) {
-            $metadata = is_string($data['metadata']) ? $data['metadata'] : json_encode($data['metadata']);
+		
+        $metadataJson = json_encode($metadataArray, JSON_UNESCAPED_SLASHES);
+        if ($metadataJson === false) {
+            $metadataJson = '{}';
         }
         
         $sql = "INSERT INTO documents (title, description, category, file_url, file_size, file_type, 
@@ -186,7 +210,7 @@ class Documents extends ContentManagement {
         $category = isset($data['category']) ? $data['category'] : '';
         $thumbnailUrl = isset($data['thumbnail_url']) ? $data['thumbnail_url'] : null;
         $uploadedBy = $this->user_id;
-        $metadataParam = $metadata;
+        $metadataParam = $metadataJson;
         // Types: title(s), description(s), category(s), file_url(s), file_size(s), file_type(s), thumbnail_url(s), uploaded_by(i), metadata(s)
         $stmt->bind_param(
             "sssssssis",
@@ -202,9 +226,12 @@ class Documents extends ContentManagement {
         );
         
         if ($stmt->execute()) {
+            $this->lastError = null;
             return $stmt->insert_id;
         }
         
+        $this->lastError = 'Database insert failed: ' . $this->conn->error;
+        error_log("Document creation failed: " . $this->lastError);
         return false;
     }
     
@@ -220,15 +247,18 @@ class Documents extends ContentManagement {
             return false;
         }
         
+        $existingDocument = $this->getDocument($id);
+        if (!$existingDocument) {
+            return false;
+        }
+		
         $updates = [];
         $params = [];
         $types = "";
-        
-        // Handle file upload if provided
+        $metadataArray = is_array($existingDocument['metadata']) ? $existingDocument['metadata'] : [];
+        $metadataShouldUpdate = false;
+		
         if ($file && isset($file['tmp_name']) && !empty($file['tmp_name'])) {
-            // Get old document to delete old file
-            $oldDoc = $this->getDocument($id);
-            
             $allowedTypes = [
                 'application/pdf',
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -236,31 +266,42 @@ class Documents extends ContentManagement {
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'application/vnd.ms-excel'
             ];
-            
+			
             $uploadResult = $this->handleFileUpload($file, 'documents', $allowedTypes, 20971520);
-            
+			
             if ($uploadResult['success']) {
-                // Delete old file
-                if ($oldDoc && !empty($oldDoc['fileUrl'])) {
-                    $this->deleteFile($oldDoc['fileUrl']);
+                if (!empty($existingDocument['fileUrl'])) {
+                    $this->deleteFile($existingDocument['fileUrl']);
                 }
-                
+				
                 $updates[] = "file_url = ?";
                 $params[] = $uploadResult['path'];
                 $types .= "s";
-                
+				
                 $updates[] = "file_size = ?";
-                $fileSize = $this->formatFileSize($file['size']);
+                $fileSize = $this->formatFileSize($uploadResult['sizeBytes'] ?? ($file['size'] ?? 0));
                 $params[] = $fileSize;
                 $types .= "s";
-                
+				
                 $updates[] = "file_type = ?";
-                $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $extension = strtolower(pathinfo($uploadResult['filename'] ?? ($file['name'] ?? ''), PATHINFO_EXTENSION));
                 $params[] = $extension;
                 $types .= "s";
+				
+                $fileMeta = [
+                    'original_name' => $uploadResult['originalName'] ?? ($file['name'] ?? null),
+                    'size_bytes' => $uploadResult['sizeBytes'] ?? ($file['size'] ?? null),
+                    'mime_type' => $uploadResult['mimeType'] ?? null,
+                    'relative_path' => $uploadResult['relativePath'] ?? null,
+                    'updated_at' => date('c')
+                ];
+                $metadataArray = array_merge($metadataArray, array_filter($fileMeta, function ($value) {
+                    return $value !== null;
+                }));
+                $metadataShouldUpdate = true;
             }
         }
-        
+		
         if (isset($data['title'])) {
             $updates[] = "title = ?";
             $params[] = $data['title'];
@@ -286,9 +327,20 @@ class Documents extends ContentManagement {
         }
         
         if (isset($data['metadata'])) {
+            $incomingMetadata = $this->normalizeMetadata($data['metadata']);
+            if (!empty($incomingMetadata)) {
+                $metadataArray = array_merge($metadataArray, $incomingMetadata);
+                $metadataShouldUpdate = true;
+            }
+        }
+		
+        if ($metadataShouldUpdate) {
+            $metadataJson = json_encode($metadataArray, JSON_UNESCAPED_SLASHES);
+            if ($metadataJson === false) {
+                $metadataJson = '{}';
+            }
             $updates[] = "metadata = ?";
-            $metadata = is_string($data['metadata']) ? $data['metadata'] : json_encode($data['metadata']);
-            $params[] = $metadata;
+            $params[] = $metadataJson;
             $types .= "s";
         }
         
@@ -349,20 +401,49 @@ class Documents extends ContentManagement {
      * @return array
      */
     private function formatDocument($row) {
+        $metadata = $this->normalizeMetadata($row['metadata'] ?? null);
         return [
             'id' => $row['id'],
             'title' => $row['title'],
             'description' => $row['description'],
             'category' => $row['category'],
             'fileUrl' => $row['file_url'],
+            'downloadUrl' => 'download.php?type=document&id=' . $row['id'],
             'fileSize' => $row['file_size'],
+            'fileSizeBytes' => isset($metadata['size_bytes']) ? (int)$metadata['size_bytes'] : null,
             'fileType' => $row['file_type'],
+            'fileMimeType' => $metadata['mime_type'] ?? null,
+            'originalFileName' => $metadata['original_name'] ?? null,
+            'storagePath' => $metadata['relative_path'] ?? null,
             'thumbnail' => $row['thumbnail_url'],
             'uploadedAt' => $row['uploaded_at'],
             'updatedAt' => $row['updated_at'],
             'downloadCount' => $row['download_count'],
-            'metadata' => $row['metadata'] ? json_decode($row['metadata'], true) : null
+            'metadata' => $metadata
         ];
+    }
+
+    private function normalizeMetadata($metadata) {
+        if (empty($metadata)) {
+            return [];
+        }
+		
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+		
+        if (is_string($metadata)) {
+            $decoded = json_decode($metadata, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+        }
+		
+        return [];
+    }
+
+    public function resolveFilePath($path) {
+        return $this->resolveStoragePath($path);
     }
     
     /**

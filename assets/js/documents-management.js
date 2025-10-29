@@ -47,7 +47,11 @@ function viewDocument(id) {
 		.then((data) => {
 			if (!data.success) return showToast("Failed to fetch document", "error");
 			const d = data.data;
-			window.open(d.fileUrl, "_blank");
+			const downloadUrl = d.downloadUrl || d.fileUrl;
+			if (!downloadUrl) {
+				return showToast("File not available", "warning");
+			}
+			window.open(downloadUrl, "_blank");
 		})
 		.catch(() => showToast("Request failed", "error"));
 }

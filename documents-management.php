@@ -98,7 +98,15 @@ $categories = $documents->getCategories();
 												<td><?php echo $doc['id']; ?></td>
 												<td><strong><?php echo htmlspecialchars($doc['title']); ?></strong><br><small class="text-muted"><?php echo htmlspecialchars(substr($doc['description'] ?? '', 0, 100)); ?>...</small></td>
 												<td><?php echo htmlspecialchars($doc['category']); ?></td>
-												<td><a href="<?php echo htmlspecialchars($doc['fileUrl']); ?>" target="_blank">Download</a></td>
+												<td>
+													<a href="<?php echo htmlspecialchars($doc['downloadUrl']); ?>" target="_blank">Download</a>
+													<?php if (!empty($doc['originalFileName'])): ?>
+													<br><small class="text-muted"><?php echo htmlspecialchars($doc['originalFileName']); ?></small>
+													<?php endif; ?>
+													<?php if (!empty($doc['fileSize'])): ?>
+													<br><small class="text-muted"><?php echo htmlspecialchars($doc['fileSize']); ?></small>
+													<?php endif; ?>
+												</td>
 												<td><?php echo $doc['uploadedAt']; ?></td>
 												<td>
 													<div class="action-buttons">

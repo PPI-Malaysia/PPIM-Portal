@@ -11,9 +11,9 @@ class ContentManagement extends ppim {
         parent::__construct();
         
         if (!$this->hasContentAccess()) {
-            // In API mode, avoid redirect output that would corrupt JSON
+            // In API mode, send error response instead of redirect
             if (defined('IS_API') && IS_API === true) {
-                return;
+                $this->sendError('ACCESS_DENIED', 'You do not have permission to access content management', 403);
             }
             header('Location: /index.php');
             exit();
@@ -121,56 +121,126 @@ class ContentManagement extends ppim {
      * @return array - ['success' => bool, 'path' => string|null, 'error' => string|null]
      */
     protected function handleFileUpload($file, $uploadDir, $allowedTypes = [], $maxSize = 10485760) {
-        $result = ['success' => false, 'path' => null, 'error' => null];
-        
-        // Check if file was uploaded
+        $result = [
+            'success' => false,
+            'path' => null,
+            'relativePath' => null,
+            'filename' => null,
+            'originalName' => null,
+            'mimeType' => null,
+            'sizeBytes' => null,
+            'error' => null
+        ];
+		
         if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
             $result['error'] = 'No file uploaded';
             return $result;
         }
-        
-        // Check for upload errors
+		
         if ($file['error'] !== UPLOAD_ERR_OK) {
             $result['error'] = 'File upload error: ' . $file['error'];
             return $result;
         }
-        
-        // Check file size
+		
         if ($file['size'] > $maxSize) {
             $result['error'] = 'File too large. Maximum size: ' . $this->formatFileSize($maxSize);
             return $result;
         }
-        
-        // Check file type
+		
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
-        
+        $mimeType = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
+        if ($finfo) {
+            finfo_close($finfo);
+        }
+		
+        if (!$mimeType) {
+            $result['error'] = 'Unable to determine file type';
+            return $result;
+        }
+		
         if (!empty($allowedTypes) && !in_array($mimeType, $allowedTypes)) {
             $result['error'] = 'Invalid file type. Allowed types: ' . implode(', ', $allowedTypes);
             return $result;
         }
-        
-        // Create upload directory if it doesn't exist
-        $fullUploadDir = ROOT_PATH . 'assets/uploads/' . $uploadDir;
-        if (!file_exists($fullUploadDir)) {
-            mkdir($fullUploadDir, 0755, true);
+		
+        $uploadsRoot = rtrim(ROOT_PATH, '/\\') . '/assets/uploads';
+        if (!file_exists($uploadsRoot)) {
+            if (!@mkdir($uploadsRoot, 0755, true)) {
+                $result['error'] = 'Failed to create uploads directory: ' . $uploadsRoot;
+                error_log($result['error']);
+                return $result;
+            }
         }
-        
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '_' . time() . '.' . $extension;
+		
+        if (!is_writable($uploadsRoot)) {
+            $result['error'] = 'Uploads directory is not writable: ' . $uploadsRoot;
+            error_log($result['error']);
+            return $result;
+        }
+		
+        $normalizedDir = trim($uploadDir, '/');
+        $dateSegment = date('Y/m');
+        $relativeDirectory = $normalizedDir ? $normalizedDir . '/' . $dateSegment : $dateSegment;
+        $fullUploadDir = $uploadsRoot . '/' . $relativeDirectory;
+        if (!file_exists($fullUploadDir)) {
+            if (!@mkdir($fullUploadDir, 0755, true)) {
+                $result['error'] = 'Failed to create upload subdirectory: ' . $fullUploadDir;
+                error_log($result['error']);
+                return $result;
+            }
+        }
+		
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        try {
+            $randomName = bin2hex(random_bytes(16));
+        } catch (Exception $exception) {
+            $randomName = uniqid('', true);
+        }
+        $filename = $randomName . ($extension ? '.' . $extension : '');
         $targetPath = $fullUploadDir . '/' . $filename;
-        
-        // Move uploaded file
+		
+        // Verify tmp file exists before moving
+        if (!file_exists($file['tmp_name'])) {
+            $result['error'] = 'Temporary file not found: ' . $file['tmp_name'];
+            error_log($result['error']);
+            return $result;
+        }
+		
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             $result['success'] = true;
-            $result['path'] = '/assets/uploads/' . $uploadDir . '/' . $filename;
+            $result['path'] = '/assets/uploads/' . $relativeDirectory . '/' . $filename;
+            $result['relativePath'] = $relativeDirectory . '/' . $filename;
+            $result['filename'] = $filename;
+            $result['originalName'] = $file['name'];
+            $result['mimeType'] = $mimeType;
+            $result['sizeBytes'] = (int)$file['size'];
+            error_log("File uploaded successfully: " . $targetPath);
         } else {
-            $result['error'] = 'Failed to move uploaded file';
+            $result['error'] = 'Failed to move uploaded file from ' . $file['tmp_name'] . ' to ' . $targetPath . ' (check permissions)';
+            error_log($result['error']);
         }
-        
+		
         return $result;
+    }
+
+    protected function resolveStoragePath($path) {
+        if (empty($path)) {
+            return null;
+        }
+		
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+		
+        $normalizedPath = str_replace('\\', '/', $path);
+        $normalizedPath = ltrim($normalizedPath, '/');
+        $fullPath = ROOT_PATH . $normalizedPath;
+        if (file_exists($fullPath)) {
+            return $fullPath;
+        }
+		
+        $realPath = realpath($path);
+        return $realPath !== false ? $realPath : null;
     }
     
     /**

@@ -3,8 +3,9 @@
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
+// Define ROOT_PATH relative to this file's location
 if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+    define('ROOT_PATH', realpath(__DIR__ . '/../../..') . '/');
 }
 
 require_once(ROOT_PATH . "assets/php/campuses.php");

@@ -19,7 +19,14 @@ class ppim {
         
         // Connect to database - using absolute path resolution
         if (!defined('ROOT_PATH')) {
-            define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+            $projectRoot = realpath(__DIR__ . '/../../');
+            if ($projectRoot === false) {
+                $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : '';
+                $projectRoot = !empty($documentRoot) ? $documentRoot : getcwd();
+            }
+            $projectRoot = str_replace('\\', '/', $projectRoot);
+            $projectRoot = rtrim($projectRoot, '/') . '/';
+            define('ROOT_PATH', $projectRoot);
         }
         
         require(ROOT_PATH . "assets/php/conf.php");

@@ -5,14 +5,10 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
 
 
 // Use proper path resolution for including files
-// This is necessary because this file is in a subdirectory (assets/php/API)
+// Define ROOT_PATH relative to this file's location (assets/php/API/calendar.php -> project root)
 if (!defined('ROOT_PATH')) {
-    // Adapt this path as needed for your server structure
-    define('ROOT_PATH', $_SERVER['DOCUMENT_ROOT'] . '/');
+    define('ROOT_PATH', realpath(__DIR__ . '/../../..') . '/');
 }
-
-// Log the include path for debugging
-error_log("Including file from path: " . ROOT_PATH . "assets/php/calendar.php");
 
 require_once(ROOT_PATH . "assets/php/calendar.php");
 
