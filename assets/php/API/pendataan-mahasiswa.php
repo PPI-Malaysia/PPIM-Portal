@@ -274,7 +274,7 @@ function norm_dob(?string $s): string {
 }
 function norm_passport(?string $s): string {
     $s = strtoupper(trim((string)$s));
-    if ($s !== '' && !preg_match('/^[A-Z0-9]{3,30}$/', $s)) fail('passport format invalid', 422);
+    if ($s !== '' && !preg_match('/^[A-Z]{1,2}[0-9]{7,8}$/', $s)) fail('passport format invalid', 422);
     return $s;
 }
 function norm_phone(?string $s): string {
