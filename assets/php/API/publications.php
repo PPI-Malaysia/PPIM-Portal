@@ -1,29 +1,19 @@
 <?php
 // API endpoint for publications management
-header('Content-Type: application/json');
-date_default_timezone_set('Asia/Kuala_Lumpur');
 
 // Define ROOT_PATH relative to this file's location
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', realpath(__DIR__ . '/../../..') . '/');
 }
 
+// Include API headers and authentication helper
+require_once(__DIR__ . '/api-headers.php');
 require_once(ROOT_PATH . "assets/php/publications.php");
 
 $publications = new Publications();
 
-// Check authentication
-if (!$publications->isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode([
-        'success' => false,
-        'error' => [
-            'code' => 'UNAUTHORIZED',
-            'message' => 'Authentication required'
-        ]
-    ]);
-    exit;
-}
+// Check authentication - Allow public read access for GET requests
+checkApiAuthentication($publications, true);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

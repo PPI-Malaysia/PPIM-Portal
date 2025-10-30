@@ -120,7 +120,7 @@ class ContentManagement extends ppim {
      * @param int $maxSize - Maximum file size in bytes (default: 10MB)
      * @return array - ['success' => bool, 'path' => string|null, 'error' => string|null]
      */
-    protected function handleFileUpload($file, $uploadDir, $allowedTypes = [], $maxSize = 10485760) {
+    public function handleFileUpload($file, $uploadDir, $allowedTypes = [], $maxSize = 10485760) {
         $result = [
             'success' => false,
             'path' => null,

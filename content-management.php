@@ -293,19 +293,67 @@ $totalPages = ceil($totalRecords / $limit);
                             </div>
                         </div>
                         
+                        <!-- Author Information -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="authorName" class="form-label">Author Name *</label>
+                                <input type="text" class="form-control" id="authorName" name="authorName" 
+                                       placeholder="e.g., Dr. Ahmad Ibrahim" required>
+                                <small class="text-muted">Enter the author's full name</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="authorAffiliation" class="form-label">Author Affiliation</label>
+                                <input type="text" class="form-control" id="authorAffiliation" name="authorAffiliation" 
+                                       placeholder="e.g., Universiti Malaya">
+                                <small class="text-muted">University, organization, or institution</small>
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <label for="publishedAt" class="form-label">Published Date</label>
                             <input type="datetime-local" class="form-control" id="publishedAt" name="publishedAt">
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="featuredImageUrl" class="form-label">Featured Image URL</label>
-                            <input type="url" class="form-control" id="featuredImageUrl" name="featuredImageUrl">
+                        <!-- Image Uploads -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="featuredImageFile" class="form-label">Featured Image</label>
+                                <input type="file" class="form-control" id="featuredImageFile" name="featuredImageFile" accept="image/*">
+                                <small class="text-muted">Upload image for thumbnail/preview (JPG, PNG, WebP)</small>
+                                <div id="featuredImagePreview" class="mt-2"></div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="bannerFile" class="form-label">Banner Image</label>
+                                <input type="file" class="form-control" id="bannerFile" name="bannerFile" accept="image/*">
+                                <small class="text-muted">Upload banner image for article header</small>
+                                <div id="bannerPreview" class="mt-2"></div>
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="bannerUrl" class="form-label">Banner URL</label>
-                            <input type="url" class="form-control" id="bannerUrl" name="bannerUrl">
+                        <!-- Alternative: URLs (if you still want to support external URLs) -->
+                        <div class="accordion mb-3" id="urlAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#urlOptions">
+                                        Or use external image URLs (optional)
+                                    </button>
+                                </h2>
+                                <div id="urlOptions" class="accordion-collapse collapse" data-bs-parent="#urlAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="featuredImageUrl" class="form-label">Featured Image URL</label>
+                                            <input type="url" class="form-control" id="featuredImageUrl" name="featuredImageUrl">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="bannerUrl" class="form-label">Banner URL</label>
+                                            <input type="url" class="form-control" id="bannerUrl" name="bannerUrl">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Attachments -->

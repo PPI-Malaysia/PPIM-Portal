@@ -25,7 +25,37 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (form) {
 		form.addEventListener("submit", handleFormSubmit);
 	}
+	
+	// Image preview handlers
+	const featuredImageFile = document.getElementById("featuredImageFile");
+	if (featuredImageFile) {
+		featuredImageFile.addEventListener("change", function(e) {
+			previewImage(e.target, "featuredImagePreview");
+		});
+	}
+	
+	const bannerFile = document.getElementById("bannerFile");
+	if (bannerFile) {
+		bannerFile.addEventListener("change", function(e) {
+			previewImage(e.target, "bannerPreview");
+		});
+	}
 });
+
+function previewImage(input, previewId) {
+	const preview = document.getElementById(previewId);
+	if (!preview) return;
+	
+	if (input.files && input.files[0]) {
+		const reader = new FileReader();
+		reader.onload = function(e) {
+			preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="max-width: 200px; max-height: 150px;">`;
+		};
+		reader.readAsDataURL(input.files[0]);
+	} else {
+		preview.innerHTML = '';
+	}
+}
 
 function handleFormSubmit(e) {
 	e.preventDefault();
@@ -38,19 +68,35 @@ function handleFormSubmit(e) {
 	const formData = new FormData(e.target);
 	const publicationId = formData.get("id");
 
-	// Add author ID (current user)
-	formData.append("authorId", getCurrentUserId());
-
 	// Add action
 	formData.append("action", publicationId ? "update" : "create");
+	
+	// Debug: Log what we're sending
+	console.log("Submitting publication:");
+	for (let [key, value] of formData.entries()) {
+		if (value instanceof File) {
+			console.log(`  ${key}: [File] ${value.name}`);
+		} else {
+			console.log(`  ${key}: ${value}`);
+		}
+	}
+
+	// Use absolute path to avoid issues with dev server
+	const apiUrl = window.location.origin + "/assets/php/page/publication_operations.php";
+	console.log("Posting to:", apiUrl);
 
 	// Send request (multipart, includes files)
-	fetch("assets/php/page/publication_operations.php", {
+	fetch(apiUrl, {
 		method: "POST",
 		body: formData,
+		credentials: 'same-origin' // Include session cookies
 	})
-		.then((response) => response.json())
+		.then((response) => {
+			console.log("Response status:", response.status);
+			return response.json();
+		})
 		.then((data) => {
+			console.log("Response data:", data);
 			if (data.success) {
 				showToast(data.message, "success");
 				// Close modal
@@ -70,6 +116,7 @@ function handleFormSubmit(e) {
 					(data.message || "Operation failed") +
 					(details ? ": " + details : "");
 				showToast(msg, "error");
+				console.error("Publication error:", data);
 			}
 		})
 		.catch((error) => {

@@ -189,9 +189,15 @@ class Publications extends ContentManagement {
         // Author id fallback to current user
         $authorId = isset($data['authorId']) ? (int)$data['authorId'] : (int)$this->user_id;
         
+        // Custom author name and affiliation
+        $authorName = isset($data['authorName']) && !empty($data['authorName']) 
+            ? trim($data['authorName']) 
+            : 'Unknown Author';
+        $authorAffiliation = isset($data['authorAffiliation']) ? trim($data['authorAffiliation']) : null;
+        
         $sql = "INSERT INTO publications (title, slug, excerpt, content, featured_image_url, featured_image_alt, 
-                banner_url, banner_alt, author_id, category, published_at, reading_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                banner_url, banner_alt, author_id, author_name, author_affiliation, category, published_at, reading_time) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         // Prepare bind variables (must be variables, not expressions)
         $title = $data['title'];
@@ -204,7 +210,7 @@ class Publications extends ContentManagement {
 
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param(
-            "ssssssssissi",
+            "sssssssisssssi",
             $title,
             $slug,
             $excerpt,
@@ -214,6 +220,8 @@ class Publications extends ContentManagement {
             $bannerUrl,
             $bannerAlt,
             $authorId,
+            $authorName,
+            $authorAffiliation,
             $category,
             $publishedAt,
             $readingTime
@@ -299,6 +307,18 @@ class Publications extends ContentManagement {
             $updates[] = "author_id = ?";
             $params[] = $data['authorId'];
             $types .= "i";
+        }
+        
+        if (isset($data['authorName'])) {
+            $updates[] = "author_name = ?";
+            $params[] = trim($data['authorName']);
+            $types .= "s";
+        }
+        
+        if (isset($data['authorAffiliation'])) {
+            $updates[] = "author_affiliation = ?";
+            $params[] = trim($data['authorAffiliation']);
+            $types .= "s";
         }
         
         if (isset($data['category'])) {
@@ -489,20 +509,40 @@ class Publications extends ContentManagement {
      * @return array
      */
     private function formatPublication($row, $full = false) {
+        // Helper function to convert relative paths to absolute URLs
+        $makeAbsoluteUrl = function($path) {
+            if (empty($path)) return null;
+            
+            // If already absolute URL, return as-is
+            if (preg_match('#^https?://#i', $path)) {
+                return $path;
+            }
+            
+            // Convert relative path to absolute URL
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'portal.ppimalaysia.id';
+            
+            // Ensure path starts with /
+            $path = '/' . ltrim($path, '/');
+            
+            return $protocol . '://' . $host . $path;
+        };
+        
         $publication = [
             'id' => $row['id'],
             'title' => $row['title'],
             'slug' => $row['slug'],
             'excerpt' => $row['excerpt'],
             'featuredImage' => [
-                'url' => $row['featured_image_url'],
+                'url' => $makeAbsoluteUrl($row['featured_image_url']),
                 'alt' => $row['featured_image_alt']
             ],
             'category' => $row['category'],
             'tags' => $this->getTags($row['id']),
             'author' => [
                 'id' => $row['author_id'],
-                'name' => $row['author_name'] ?? 'Unknown'
+                'name' => $row['author_name'] ?? 'Unknown',
+                'affiliation' => $row['author_affiliation'] ?? null
             ],
             'publishedAt' => $row['published_at'],
             'readingTime' => $row['reading_time']
@@ -511,7 +551,7 @@ class Publications extends ContentManagement {
         if ($full) {
             $publication['content'] = $row['content'];
             $publication['banner'] = [
-                'url' => $row['banner_url'],
+                'url' => $makeAbsoluteUrl($row['banner_url']),
                 'alt' => $row['banner_alt']
             ];
             $publication['updatedAt'] = $row['updated_at'];
