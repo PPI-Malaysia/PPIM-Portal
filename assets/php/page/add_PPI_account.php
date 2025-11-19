@@ -1,5 +1,8 @@
 <?php
 //note: this page is only accessible to users with user_type = 999 (super admin)
+// Set the content type to JSON - MUST be before any output
+header('Content-Type: application/json');
+
 require_once("../user.php");
 // Start session if not already started
 if (session_status() == PHP_SESSION_NONE) {
@@ -16,8 +19,6 @@ if ($_SESSION['user_type'] != 999) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access - Super Admin only']);
     exit();
 }
-// Set the content type to JSON
-header('Content-Type: application/json');
 
 try {
     $main = new User();

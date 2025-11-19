@@ -288,6 +288,27 @@ function norm_email(?string $s): ?string {
     if (!filter_var($s, FILTER_VALIDATE_EMAIL)) fail('email invalid', 422);
     return $s;
 }
+function norm_postcode(?string $s, mysqli $conn): ?string {
+    $s = trim((string)$s);
+    if ($s === '') return null;
+
+    // Validate format: must be exactly 5 digits
+    if (!preg_match('/^[0-9]{5}$/', $s)) {
+        fail('postcode_id must be 5 digits', 422);
+    }
+
+    // Check if postcode exists in database
+    $stmt = $conn->prepare('SELECT 1 FROM postcode WHERE zip_code = ? LIMIT 1');
+    $stmt->bind_param('s', $s);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if (!$result->fetch_row()) {
+        fail('postcode_id does not exist in our database', 422);
+    }
+
+    return $s;
+}
 
 // ---------------- Main ----------------
 try {
@@ -379,7 +400,7 @@ try {
             'passport'                   => fn($v) => norm_passport($v),
             'phone_number'               => fn($v) => norm_phone($v),
             'status_id'                  => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
-            'postcode_id'                => fn($v) => ($v === '' || $v === null) ? null : $v,
+            'postcode_id'                => fn($v) use ($conn) => norm_postcode($v, $conn),
             'address'                    => fn($v) => trim((string)$v),
             'expected_graduate'          => fn($v) => norm_dob($v),
             'degree'                     => fn($v) => ($v === '' ? null : trim((string)$v)),
@@ -459,7 +480,7 @@ try {
         $expected    = norm_dob($body['education_graduation'] ?? '');
         $degree      = isset($body['education_programme']) ? trim((string)$body['education_programme']) : null;
         $level_id    = isset($body['education_level']) ? (int)$body['education_level'] : null;
-        $postcode_id = isset($body['postcode_id']) ? (string)$body['postcode_id'] : null;
+        $postcode_id = norm_postcode($body['postcode_id'] ?? null, $conn);
 
         if ($fullname === '' || $dob === '' || $passport === '' || $phone === '')
             fail('fullname, dob, passport, phone_number are required', 422);
