@@ -135,17 +135,8 @@ $totalPages = ceil($totalRecords / $limit);
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Postcode*</label>
-                                                <select name="postcode_id" class="form-control"
-                                                    id="choices-single-no-sorting" data-choices
-                                                    data-choices-sorting-false>
+                                                <select name="postcode_id" class="form-control" id="postcode-select-add">
                                                     <option value="">Select Postcode</option>
-                                                    <?php
-                                                    $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
-                                                    foreach ($postcodes as $postcode): ?>
-                                                    <option value="<?= htmlspecialchars($postcode['zip_code']) ?>">
-                                                        <?= htmlspecialchars($postcode['zip_code']) ?> -
-                                                        <?= htmlspecialchars($postcode['city']) ?></option>
-                                                    <?php endforeach; ?>
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
@@ -326,20 +317,10 @@ $totalPages = ceil($totalRecords / $limit);
                                                                         <div class="mb-3">
                                                                             <label class="form-label">Postcode</label>
                                                                             <select name="postcode_id"
-                                                                                class="form-select">
-                                                                                <option value="">Select Postcode
-                                                                                </option>
-                                                                                <?php
-                                                                                $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
-                                                                                foreach ($postcodes as $postcode): ?>
-                                                                                <option
-                                                                                    value="<?= htmlspecialchars($postcode['zip_code']) ?>"
-                                                                                    <?= $row['postcode_id'] == $postcode['zip_code'] ? 'selected' : '' ?>>
-                                                                                    <?= htmlspecialchars($postcode['zip_code']) ?>
-                                                                                    -
-                                                                                    <?= htmlspecialchars($postcode['city']) ?>
-                                                                                </option>
-                                                                                <?php endforeach; ?>
+                                                                                class="form-select postcode-select-edit"
+                                                                                id="postcode-select-edit-<?= $row['university_id'] ?>"
+                                                                                data-selected="<?= htmlspecialchars($row['postcode_id'] ?? '') ?>">
+                                                                                <option value="">Select Postcode</option>
                                                                             </select>
                                                                         </div>
                                                                         <div class="mb-3">
@@ -530,6 +511,9 @@ $totalPages = ceil($totalRecords / $limit);
 
         <!-- Custom js -->
         <script src="../assets/js/database-nav.js"></script>
+
+        <!-- AJAX Search Scripts -->
+        <script src="../assets/js/ajax-postcode.js"></script>
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -725,6 +709,48 @@ $totalPages = ceil($totalRecords / $limit);
                 `;
                     });
             });
+        });
+        </script>
+
+        <!-- Initialize AJAX Postcode Search -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize postcode search for Add form
+            const postcodeAddSearch = initPostcodeSearch('postcode-select-add', {
+                apiUrl: '../assets/php/API/get-postcode.php',
+                limit: 100,
+                searchMinLength: 2,
+                debug: false
+            });
+
+            // Initialize postcode search for all Edit modals
+            const editModals = document.querySelectorAll('.postcode-select-edit');
+            const editSearchInstances = [];
+
+            editModals.forEach(function(selectElement) {
+                const selectId = selectElement.id;
+                const selectedValue = selectElement.getAttribute('data-selected');
+
+                // Initialize the search
+                const searchInstance = initPostcodeSearch(selectId, {
+                    apiUrl: '../assets/php/API/get-postcode.php',
+                    limit: 100,
+                    searchMinLength: 2,
+                    debug: false,
+                    onLoad: function(data, searchTerm) {
+                        // After data loads, set the selected value
+                        if (selectedValue && !searchTerm) {
+                            setTimeout(function() {
+                                searchInstance.setValue(selectedValue);
+                            }, 100);
+                        }
+                    }
+                });
+
+                editSearchInstances.push(searchInstance);
+            });
+
+            console.log('✓ Postcode AJAX search initialized on university page');
         });
         </script>
 

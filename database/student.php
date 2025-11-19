@@ -103,6 +103,9 @@ $credit_footer = '
                                         <i class="ti ti-plus fs-16"></i> Add Bulk
                                     </button>
                                     <?php } ?>
+                                    <button type="button" class="btn btn-success btn-sm mx-2" id="exportBtn">
+                                        <i class="ti ti-download fs-16"></i> Export
+                                    </button>
                                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
                                         data-bs-target="#addStudent">
                                         <i class="ti ti-plus fs-16"></i> Add New
@@ -271,15 +274,8 @@ $credit_footer = '
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">University</label>
-                                                <select name="university_id" class="form-select">
+                                                <select name="university_id" class="form-select" id="university-select">
                                                     <option value="">Select University</option>
-                                                    <?php
-                                                    $universities = $studentDB->getDropdownOptions('university', 'university_id', 'university_name');
-                                                    foreach ($universities as $university): ?>
-                                                    <option
-                                                        value="<?= htmlspecialchars($university['university_id']) ?>">
-                                                        <?= htmlspecialchars($university['university_name']) ?></option>
-                                                    <?php endforeach; ?>
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
@@ -313,17 +309,8 @@ $credit_footer = '
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Postcode*</label>
-                                                <select name="postcode_id" class="form-control"
-                                                    id="choices-single-no-sorting" data-choices
-                                                    data-choices-sorting-false>
+                                                <select name="postcode_id" class="form-control" id="postcode-select">
                                                     <option value="">Select Postcode</option>
-                                                    <?php
-                                                    $postcodes = $studentDB->getDropdownOptions('postcode', 'zip_code', 'city');
-                                                    foreach ($postcodes as $postcode): ?>
-                                                    <option value="<?= htmlspecialchars($postcode['zip_code']) ?>">
-                                                        <?= htmlspecialchars($postcode['zip_code']) ?> -
-                                                        <?= htmlspecialchars($postcode['city']) ?></option>
-                                                    <?php endforeach; ?>
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
@@ -663,6 +650,11 @@ $credit_footer = '
         <!-- Custom js -->
         <script src="../assets/js/database-nav.js"></script>
 
+        <!-- AJAX Search Scripts -->
+        <script src="../assets/js/ajax-university.js"></script>
+        <script src="../assets/js/ajax-postcode.js"></script>
+
+        <?php if (!$hasFullAccess) { ?>
         <script>
         (function() {
             const dropArea = document.getElementById('csvDropArea');
@@ -1090,6 +1082,53 @@ $credit_footer = '
                 });
             }
         })();
+        </script>
+        <?php } ?>
+
+        <!-- Export functionality -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    // Get current search and sort parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const search = urlParams.get('search') || '';
+                    const sort = urlParams.get('sort') || '';
+                    const dir = urlParams.get('dir') || '';
+
+                    // Build export URL with current filters
+                    let exportUrl = '../assets/php/API/export-students.php?export=csv';
+                    if (search) exportUrl += '&search=' + encodeURIComponent(search);
+                    if (sort) exportUrl += '&sort=' + encodeURIComponent(sort);
+                    if (dir) exportUrl += '&dir=' + encodeURIComponent(dir);
+
+                    // Trigger download
+                    window.location.href = exportUrl;
+                });
+            }
+        });
+        </script>
+
+        <!-- Initialize AJAX Search for University and Postcode -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize university search
+            const universitySearch = initUniversitySearch('university-select', {
+                apiUrl: '../assets/php/API/get-university.php',
+                limit: 100,
+                searchMinLength: 2,
+                debug: true
+            });
+
+            // Initialize postcode search
+            const postcodeSearch = initPostcodeSearch('postcode-select', {
+                apiUrl: '../assets/php/API/get-postcode.php',
+                limit: 100,
+                searchMinLength: 2,
+                debug: true
+            });
+        });
         </script>
 
 </body>

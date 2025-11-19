@@ -30,7 +30,8 @@ class StudentDatabase extends ppim {
                 throw new Exception("Database connection not established");
             }
 
-            if (!$this->hasFullAccess() && !$this->isPPICampus()) {
+            // Only check permissions and redirect if not in API mode
+            if (!defined('API_MODE') && !$this->hasFullAccess() && !$this->isPPICampus()) {
                 header('Location: /access-denied.php');
                 exit();
             }
@@ -1143,6 +1144,171 @@ class StudentDatabase extends ppim {
     }
 
     /**
+     * Get all students for export (no pagination)
+     * Supports search and sorting like the main view
+     */
+    public function getAllStudentsForExport($search = '', $sort = null, $dir = 'asc') {
+        $params = [];
+        $types = '';
+        $whereClause = '';
+        $searchParam = "%$search%";
+
+        // Base query with all necessary joins
+        $baseQuery = "
+            SELECT
+                s.student_id,
+                s.fullname,
+                s.dob,
+                s.email,
+                s.passport,
+                s.phone_number,
+                s.postcode_id,
+                p.city,
+                s.address,
+                ql.level_name as qualification_level,
+                s.degree,
+                s.expected_graduate,
+                u.university_name,
+                ss.status_name,
+                s.is_active
+            FROM student s
+            LEFT JOIN university u          ON s.university_id = u.university_id
+            LEFT JOIN postcode p            ON s.postcode_id = p.zip_code
+            LEFT JOIN qualification_level ql ON s.level_of_qualification_id = ql.level_id
+            LEFT JOIN student_status ss     ON s.status_id = ss.status_id";
+
+        // Check access level
+        if ($this->hasFullAccess()) {
+            // Full access - can see all students
+            if (!empty($search)) {
+                $whereClause = " WHERE (s.fullname LIKE ? OR s.email LIKE ? OR u.university_name LIKE ? OR p.city LIKE ?)";
+                $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                $types = "ssss";
+            }
+        } else {
+            // Limited access - filter by university
+            $university_id = $this->getCampusID();
+            $whereClause = " WHERE s.university_id = ?";
+            $params[] = $university_id;
+            $types .= 'i';
+
+            if (!empty($search)) {
+                $whereClause .= " AND (s.fullname LIKE ? OR s.email LIKE ?)";
+                $params[] = $searchParam;
+                $params[] = $searchParam;
+                $types .= "ss";
+            }
+        }
+
+        // Add sorting
+        $allowedSorts = [
+            'id' => 's.student_id',
+            'fullname' => 's.fullname',
+            'university' => 'u.university_name',
+            'degree' => 's.degree',
+        ];
+        $orderDir = strtoupper($dir) === 'DESC' ? 'DESC' : 'ASC';
+        $orderClause = isset($allowedSorts[$sort])
+            ? " ORDER BY {$allowedSorts[$sort]} $orderDir"
+            : " ORDER BY s.fullname ASC";
+
+        // Execute query
+        $query = $baseQuery . $whereClause . $orderClause;
+        $stmt = $this->conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->conn->error);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result) {
+            throw new Exception("Query failed: " . $this->conn->error);
+        }
+
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get all PPI Campus members for export (no pagination)
+     * Supports search like the main view
+     */
+    public function getAllPPICampusForExport($search = '') {
+        $params = [];
+        $types = '';
+        $whereClause = '';
+        $searchParam = "%$search%";
+
+        // Base query with all necessary joins
+        $baseQuery = "
+            SELECT
+                pc.ppi_campus_id,
+                s.fullname,
+                u.university_name,
+                pc.start_year,
+                pc.end_year,
+                pc.department,
+                pc.position,
+                pc.description,
+                pc.is_active
+            FROM ppi_campus pc
+            LEFT JOIN student s ON pc.student_id = s.student_id
+            LEFT JOIN university u ON pc.university_id = u.university_id";
+
+        // Check access level
+        if ($this->hasFullAccess()) {
+            // Full access - can see all PPI campus members
+            if (!empty($search)) {
+                $whereClause = " WHERE (s.fullname LIKE ? OR u.university_name LIKE ? OR pc.department LIKE ? OR pc.position LIKE ?)";
+                $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+                $types = "ssss";
+            }
+        } else {
+            // Limited access - filter by university
+            $university_id = $this->getCampusID();
+            $whereClause = " WHERE pc.university_id = ?";
+            $params[] = $university_id;
+            $types .= 'i';
+
+            if (!empty($search)) {
+                $whereClause .= " AND (s.fullname LIKE ? OR pc.department LIKE ?)";
+                $params[] = $searchParam;
+                $params[] = $searchParam;
+                $types .= "ss";
+            }
+        }
+
+        // Add default sorting
+        $orderClause = " ORDER BY pc.start_year DESC, s.fullname ASC";
+
+        // Execute query
+        $query = $baseQuery . $whereClause . $orderClause;
+        $stmt = $this->conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->conn->error);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result) {
+            throw new Exception("Query failed: " . $this->conn->error);
+        }
+
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
      * Get user permissions info for frontend
      */
     public function getUserInfo() {
@@ -1257,6 +1423,139 @@ class StudentDatabase extends ppim {
         } catch (Exception $e) {
             return ['success' => false, 'error' => 'Server error: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Get universities with optional search filter
+     * @param string $search Search term (optional)
+     * @param int $limit Maximum number of results (optional)
+     * @return array Array of universities
+     */
+    public function getUniversities($search = '', $limit = 0) {
+        $query = "SELECT u.university_id, u.university_name, u.address,
+                         ut.type_name as university_type,
+                         p.zip_code, p.city, p.state_name
+                  FROM university u
+                  LEFT JOIN university_type ut ON u.type_id = ut.type_id
+                  LEFT JOIN postcode p ON u.postcode_id = p.zip_code";
+
+        $params = [];
+        $types = '';
+
+        // Add search filter if provided
+        if (!empty($search)) {
+            $query .= " WHERE u.university_name LIKE ? OR p.city LIKE ? OR p.state_name LIKE ?";
+            $searchParam = "%{$search}%";
+            $params = [$searchParam, $searchParam, $searchParam];
+            $types = 'sss';
+        }
+
+        // Order by university name
+        $query .= " ORDER BY u.university_name ASC";
+
+        // Add limit if specified
+        if ($limit > 0) {
+            $query .= " LIMIT ?";
+            $params[] = $limit;
+            $types .= 'i';
+        }
+
+        // Prepare and execute statement
+        $stmt = $this->conn->prepare($query);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // Fetch all universities
+        $universities = [];
+        while ($row = $result->fetch_assoc()) {
+            $universities[] = [
+                'university_id' => $row['university_id'],
+                'university_name' => $row['university_name'],
+                'address' => $row['address'],
+                'university_type' => $row['university_type'],
+                'postcode' => [
+                    'zip_code' => $row['zip_code'],
+                    'city' => $row['city'],
+                    'state_name' => $row['state_name']
+                ]
+            ];
+        }
+
+        $stmt->close();
+        return $universities;
+    }
+
+    /**
+     * Get postcodes with optional filters
+     * @param string $search Search term (optional)
+     * @param string $city Filter by city (optional)
+     * @param string $state Filter by state (optional)
+     * @param int $limit Maximum number of results (optional)
+     * @return array Array of postcodes
+     */
+    public function getPostcodes($search = '', $city = '', $state = '', $limit = 0) {
+        $query = "SELECT zip_code, city, state_name FROM postcode WHERE 1=1";
+
+        $params = [];
+        $types = '';
+
+        // Add filters if provided
+        if (!empty($search)) {
+            $query .= " AND (zip_code LIKE ? OR city LIKE ? OR state_name LIKE ?)";
+            $searchParam = "%{$search}%";
+            $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
+            $types .= 'sss';
+        }
+
+        if (!empty($city)) {
+            $query .= " AND city = ?";
+            $params[] = $city;
+            $types .= 's';
+        }
+
+        if (!empty($state)) {
+            $query .= " AND state_name = ?";
+            $params[] = $state;
+            $types .= 's';
+        }
+
+        // Order by zip code
+        $query .= " ORDER BY zip_code ASC";
+
+        // Add limit if specified
+        if ($limit > 0) {
+            $query .= " LIMIT ?";
+            $params[] = $limit;
+            $types .= 'i';
+        }
+
+        // Prepare and execute statement
+        $stmt = $this->conn->prepare($query);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // Fetch all postcodes
+        $postcodes = [];
+        while ($row = $result->fetch_assoc()) {
+            $postcodes[] = [
+                'zip_code' => $row['zip_code'],
+                'city' => $row['city'],
+                'state_name' => $row['state_name']
+            ];
+        }
+
+        $stmt->close();
+        return $postcodes;
     }
 }
 
