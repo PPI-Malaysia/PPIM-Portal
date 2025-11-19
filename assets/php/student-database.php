@@ -25,20 +25,21 @@ class StudentDatabase extends ppim {
     public function __construct() {
         try {
             parent::__construct();
-            
+
             if (!$this->conn) {
                 throw new Exception("Database connection not established");
             }
-            
+
             if (!$this->hasFullAccess() && !$this->isPPICampus()) {
                 header('Location: /access-denied.php');
                 exit();
             }
-            
-            if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+            // Only handle POST requests if not called from API
+            if ($_SERVER['REQUEST_METHOD'] == 'POST' && !defined('API_MODE')) {
                 $this->handleRequest();
             }
-            
+
         } catch (Exception $e) {
             $this->showAlert('Constructor Error: ' . htmlspecialchars($e->getMessage()), 'danger');
         }
@@ -66,10 +67,6 @@ class StudentDatabase extends ppim {
      */
     private function handleRequest() {
         $action = $_POST['action'] ?? '';
-        if ($action === 'bulk_student_upload') {
-            $this->handleBulkStudentUpload();
-            return;
-        }
         $table = $_POST['table'] ?? '';
 
         if (!$this->validateTableName($table)) {
@@ -216,7 +213,7 @@ class StudentDatabase extends ppim {
                     break;
 
                 case 'university':
-                    $stmt = $this->conn->prepare("INSERT INTO university (university_name, address, email, phone_num, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?)");
+                    $stmt = $this->conn->prepare("INSERT INTO university (university_name, email, phone_num, address, type_id, postcode_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $type_id = empty($data['type_id']) ? null : (int)$data['type_id'];
                     $email = empty($data['email']) ? '' : $data['email'];
                     $phone_num = empty($data['phone_num']) ? '' : $data['phone_num'];
@@ -419,7 +416,7 @@ class StudentDatabase extends ppim {
                     $dept = empty($data['department']) ? null : $data['department'];
                     $position = empty($data['position']) ? null : $data['position'];
                     $desc = empty($data['description']) ? null : $data['description'];
-                    $is_active = (int)($data['is_active']);
+                    $is_active = (int)($data['is_active'] ?? 1);
                     $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
                     
                     $stmt->bind_param("iisssii", $start_year, $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
@@ -432,7 +429,7 @@ class StudentDatabase extends ppim {
             $university_id = $this->getCampusID();
             switch ($table) {
                 case 'student':
-                    $stmt = $this->conn->prepare("UPDATE student SET fullname = ?, university_id = ?, dob = ?, email = ?, passport = ?, phone_number = ?, postcode_id = ?, address = ?, expected_graduate = ?, degree = ?, level_of_qualification_id = ?, status_id = ?, is_active = ? WHERE student_id = ?");
+                    $stmt = $this->conn->prepare("UPDATE student SET fullname = ?, university_id = ?, dob = ?, email = ?, passport = ?, phone_number = ?, postcode_id = ?, address = ?, expected_graduate = ?, degree = ?, level_of_qualification_id = ?, status_id = ?, is_active = ? WHERE student_id = ? AND university_id = ?");
                     $dob = empty($data['dob']) ? null : $data['dob'];
                     $email = empty($data['email']) ? null : $data['email'];
                     $passport = empty($data['passport']) ? null : $data['passport'];
@@ -446,24 +443,24 @@ class StudentDatabase extends ppim {
                     $is_active = (int)($data['is_active'] ?? 1);
                     $student_id = (int)($data['student_id'] ?? 0);
                     
-                    $stmt->bind_param("sissssssssiiii", 
+                    $stmt->bind_param("sissssssssiiiii", 
                         $data['fullname'], $university_id, $dob, $email, $passport, 
                         $phone, $postcode_id, $address, $grad, $degree, 
-                        $qual_id, $status_id, $is_active, $student_id
+                        $qual_id, $status_id, $is_active, $student_id, $university_id
                     );
                     break;
 
                 case 'ppi_campus':
-                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ?");
+                    $stmt = $this->conn->prepare("UPDATE ppi_campus SET start_year = ?, end_year = ?, department = ?, position = ?, description = ?, is_active = ? WHERE ppi_campus_id = ? AND university_id = ?");
                     $start_year = empty($data['start_year']) ? null : (int)$data['start_year'];
                     $end_year = empty($data['end_year']) ? null : (int)$data['end_year'];
                     $dept = empty($data['department']) ? null : $data['department'];
                     $position = empty($data['position']) ? null : $data['position'];
                     $desc = empty($data['description']) ? null : $data['description'];
-                    $is_active = (int)($data['is_active']);
+                    $is_active = (int)($data['is_active'] ?? 1);
                     $ppi_campus_id = (int)($data['ppi_campus_id'] ?? 0);
                     
-                    $stmt->bind_param("iisssii", $start_year, $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id);
+                    $stmt->bind_param("iisssiii", $start_year, $end_year, $dept, $position, $desc, $is_active, $ppi_campus_id, $university_id);
                     break;
 
                 default:
@@ -547,13 +544,13 @@ class StudentDatabase extends ppim {
                 case 'student':
                     $stmt = $this->conn->prepare("DELETE FROM student WHERE student_id = ? AND university_id = ?");
                     $id = (int)($data['id'] ?? 0);
-                    $stmt->bind_param("ii", $id, $unviersity_id);
+                    $stmt->bind_param("ii", $id, $university_id);
                     break;
 
                 case 'ppi_campus':
                     $stmt = $this->conn->prepare("DELETE FROM ppi_campus WHERE ppi_campus_id = ? AND university_id = ?");
                     $id = (int)($data['id'] ?? 0);
-                    $stmt->bind_param("ii", $id, $unviersity_id);
+                    $stmt->bind_param("ii", $id, $university_id);
                     break;
 
                 default:
@@ -623,7 +620,7 @@ class StudentDatabase extends ppim {
             'university'           => ['university_id','university_name','type_id','postcode_id','address'],
             'university_type'      => ['type_id','type_name'],
             'qualification_level'  => ['level_id','level_name','level_order'],
-            'postcode'             => ['zip_code','city','state','country'],
+            'postcode'             => ['zip_code','city','state_name'],
             'student_status'       => ['status_id', 'status_name'],
             'student'              => ['student_id','fullname','university_id','email'],
             'ppim'                 => ['ppim_id','student_id','department','position','start_year','end_year'],
@@ -1119,393 +1116,6 @@ class StudentDatabase extends ppim {
         return (int)($row['total'] ?? 0);
     }
 
-    private function handleBulkStudentUpload(): void
-    {
-        if ($this->hasFullAccess()) {
-            $this->showAlert('Bulk upload is only available for PPI Campus accounts.', 'warning');
-            return;
-        }
-
-        if (!$this->isPPICampus()) {
-            $this->showAlert('You do not have permission to perform bulk uploads.', 'danger');
-            return;
-        }
-
-        $campusId = $this->getCampusID();
-        if (!$campusId) {
-            $this->showAlert('Unable to determine your campus ID. Please contact the administrator.', 'danger');
-            return;
-        }
-
-        if (!isset($_FILES['file'])) {
-            $this->showAlert('No file detected for bulk upload.', 'warning');
-            return;
-        }
-
-        $upload = $this->flattenUploadedFile($_FILES['file']);
-        $errorCode = (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($errorCode !== UPLOAD_ERR_OK) {
-            $this->showAlert($this->translateUploadError($errorCode), 'danger');
-            return;
-        }
-
-        if (empty($upload['tmp_name']) || !is_file($upload['tmp_name'])) {
-            $this->showAlert('Upload failed: temporary file was not found.', 'danger');
-            return;
-        }
-
-        $extension = strtolower(pathinfo($upload['name'] ?? '', PATHINFO_EXTENSION));
-        if ($extension !== 'xlsx') {
-            $this->showAlert('Invalid file format. Please upload an .xlsx workbook.', 'danger');
-            return;
-        }
-
-        try {
-            $sheet = $this->readXlsxSheet($upload['tmp_name']);
-        } catch (Exception $e) {
-            $this->showAlert('Unable to read workbook: ' . $e->getMessage(), 'danger');
-            return;
-        }
-
-        if (!$sheet['header']) {
-            $this->showAlert('The uploaded workbook does not contain any header row.', 'danger');
-            return;
-        }
-
-        $columnMap = $this->buildBulkColumnMap($sheet['header']);
-        if (!isset($columnMap['fullname'])) {
-            $this->showAlert('The uploaded workbook is missing the "Full Name" column.', 'danger');
-            return;
-        }
-
-        $stmt = $this->conn->prepare(
-            "INSERT INTO student (fullname, university_id, dob, email, passport, phone_number, postcode_id, address, expected_graduate, degree)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        if (!$stmt) {
-            $this->showAlert('Database error: ' . $this->conn->error, 'danger');
-            return;
-        }
-
-        $fullName = $dob = $email = $passport = $phone = $postcode = $address = $expectedGrad = $degree = null;
-        $campusIdParam = (int)$campusId;
-        $stmt->bind_param(
-            'sissssssss',
-            $fullName,
-            $campusIdParam,
-            $dob,
-            $email,
-            $passport,
-            $phone,
-            $postcode,
-            $address,
-            $expectedGrad,
-            $degree
-        );
-
-        $imported = 0;
-        $skipped = [];
-        $failed = [];
-
-        foreach ($sheet['rows'] as $rowNumber => $cells) {
-            $fullName = $this->normaliseString($cells[$columnMap['fullname']] ?? null);
-            if ($fullName === null) {
-                $skipped[] = $rowNumber;
-                continue;
-            }
-
-            $dob = isset($columnMap['dob'])
-                ? $this->normaliseExcelDate($cells[$columnMap['dob']] ?? null)
-                : null;
-
-            $email = isset($columnMap['email'])
-                ? $this->normaliseString($cells[$columnMap['email']] ?? null)
-                : null;
-
-            $passportRaw = isset($columnMap['passport'])
-                ? $this->normaliseString($cells[$columnMap['passport']] ?? null)
-                : null;
-            $passport = $passportRaw ? strtoupper(str_replace(' ', '', $passportRaw)) : null;
-
-            $phoneRaw = isset($columnMap['phone'])
-                ? $this->normaliseString($cells[$columnMap['phone']] ?? null)
-                : null;
-            $phone = $phoneRaw ? preg_replace('/(?!^\\+)[^0-9]/', '', $phoneRaw) : null;
-
-            $postcode = isset($columnMap['postcode'])
-                ? $this->normaliseString($cells[$columnMap['postcode']] ?? null)
-                : null;
-
-            $address = isset($columnMap['address'])
-                ? $this->normaliseString($cells[$columnMap['address']] ?? null)
-                : null;
-
-            $expectedGrad = isset($columnMap['expected'])
-                ? $this->normaliseExcelDate($cells[$columnMap['expected']] ?? null)
-                : null;
-
-            $degree = isset($columnMap['degree'])
-                ? $this->normaliseString($cells[$columnMap['degree']] ?? null)
-                : null;
-
-            if (!$stmt->execute()) {
-                $failed[] = "Row {$rowNumber}: " . $stmt->error;
-                continue;
-            }
-
-            $imported++;
-        }
-
-        $stmt->close();
-
-        if ($imported === 0 && empty($failed) && empty($skipped)) {
-            $this->showAlert('No rows were found in the uploaded workbook.', 'warning');
-            return;
-        }
-
-        $summary = "Bulk upload finished. Imported {$imported} student(s).";
-        if ($skipped) {
-            $summary .= ' Skipped rows without full name: ' . implode(', ', array_slice($skipped, 0, 5));
-            if (count($skipped) > 5) {
-                $summary .= '…';
-            }
-            $summary .= '.';
-        }
-        if ($failed) {
-            error_log('[Bulk Student Upload] ' . implode(' | ', $failed));
-            $summary .= ' Failed rows were logged for review.';
-            $this->showAlert($summary, 'warning');
-            return;
-        }
-
-        $this->showAlert($summary, 'success');
-    }
-
-    private function flattenUploadedFile(array $file): array
-    {
-        if (!is_array($file['name'])) {
-            return $file;
-        }
-
-        foreach ($file['name'] as $index => $name) {
-            if ((int)$file['error'][$index] !== UPLOAD_ERR_OK) {
-                continue;
-            }
-
-            return [
-                'name' => $name,
-                'type' => $file['type'][$index] ?? '',
-                'tmp_name' => $file['tmp_name'][$index],
-                'error' => $file['error'][$index],
-                'size' => $file['size'][$index] ?? 0,
-            ];
-        }
-
-        return [
-            'error' => $file['error'][0] ?? UPLOAD_ERR_NO_FILE,
-        ];
-    }
-
-    private function readXlsxSheet(string $path): array
-    {
-        if (!class_exists('\\ZipArchive')) {
-            throw new Exception('Zip extension is required to read .xlsx files.');
-        }
-
-        $zip = new \ZipArchive();
-        if ($zip->open($path) !== true) {
-            throw new Exception('Unable to open workbook.');
-        }
-
-        $sharedStrings = [];
-        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
-        if ($sharedXml !== false) {
-            $sharedRoot = @simplexml_load_string($sharedXml);
-            if ($sharedRoot !== false) {
-                foreach ($sharedRoot->si as $index => $si) {
-                    $value = '';
-                    if (isset($si->t)) {
-                        $value = (string)$si->t;
-                    } elseif (isset($si->r)) {
-                        foreach ($si->r as $run) {
-                            $value .= (string)$run->t;
-                        }
-                    }
-                    $sharedStrings[(int)$index] = $value;
-                }
-            }
-        }
-
-        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
-        $zip->close();
-
-        if ($sheetXml === false) {
-            throw new Exception('Worksheet "sheet1" was not found.');
-        }
-
-        $sheet = @simplexml_load_string($sheetXml);
-        if ($sheet === false || !isset($sheet->sheetData)) {
-            throw new Exception('The worksheet could not be parsed.');
-        }
-
-        $rows = [];
-        foreach ($sheet->sheetData->row as $row) {
-            $rowIndex = isset($row['r']) ? (int)$row['r'] : null;
-            if (!$rowIndex) {
-                continue;
-            }
-
-            $rowData = [];
-            foreach ($row->c as $cell) {
-                $ref = (string)$cell['r'];
-                if (!preg_match('/([A-Z]+)(\\d+)/', $ref, $matches)) {
-                    continue;
-                }
-
-                $column = $matches[1];
-                $type = (string)$cell['t'];
-                $value = '';
-
-                if ($type === 's') {
-                    $idx = (int)$cell->v;
-                    $value = $sharedStrings[$idx] ?? '';
-                } elseif ($type === 'inlineStr' && isset($cell->is->t)) {
-                    $value = (string)$cell->is->t;
-                } elseif (isset($cell->v)) {
-                    $value = (string)$cell->v;
-                }
-
-                $rowData[$column] = $value;
-            }
-
-            if ($rowData) {
-                $rows[$rowIndex] = $rowData;
-            }
-        }
-
-        if (!$rows) {
-            return ['header' => [], 'rows' => []];
-        }
-
-        ksort($rows, SORT_NUMERIC);
-        $headerKey = array_key_first($rows);
-        $header = $rows[$headerKey];
-        unset($rows[$headerKey]);
-
-        return ['header' => $header, 'rows' => $rows];
-    }
-
-    private function buildBulkColumnMap(array $header): array
-    {
-        $normalised = [];
-        foreach ($header as $column => $label) {
-            $key = $this->normaliseHeaderKey($label);
-            if ($key !== '') {
-                $normalised[$key] = $column;
-            }
-        }
-
-        $aliases = [
-            'fullname' => ['full name', 'fullname'],
-            'dob' => ['date of birth', 'dob'],
-            'email' => ['email', 'e-mail'],
-            'passport' => ['passport'],
-            'phone' => ['phone number', 'phone'],
-            'postcode' => ['zip code', 'postcode', 'postal code'],
-            'address' => ['address', 'residential address'],
-            'expected' => ['expected graduate', 'expected graduation', 'expected graduate date'],
-            'degree' => ['degree programme', 'degree program', 'degree', 'programme'],
-        ];
-
-        $map = [];
-        foreach ($aliases as $key => $candidates) {
-            foreach ($candidates as $candidate) {
-                if (isset($normalised[$candidate])) {
-                    $map[$key] = $normalised[$candidate];
-                    break;
-                }
-            }
-        }
-
-        return $map;
-    }
-
-    private function normaliseHeaderKey(?string $label): string
-    {
-        $label = $this->normaliseString($label);
-        if ($label === null) {
-            return '';
-        }
-
-        return preg_replace('/\\s+/', ' ', strtolower($label));
-    }
-
-    private function normaliseString($value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (!is_string($value)) {
-            if (is_numeric($value)) {
-                $value = (string)$value;
-            } else {
-                return null;
-            }
-        }
-
-        $value = trim($value);
-        return $value === '' ? null : $value;
-    }
-
-    private function normaliseExcelDate($value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            $serial = (float)$value;
-            if ($serial > 0) {
-                $timestamp = ($serial - 25569) * 86400;
-                if ($timestamp >= 0) {
-                    return gmdate('Y-m-d', (int)round($timestamp));
-                }
-            }
-        }
-
-        $value = $this->normaliseString($value);
-        if ($value === null) {
-            return null;
-        }
-
-        if (preg_match('/^\\d{4}$/', $value)) {
-            return $value . '-01-01';
-        }
-
-        foreach (['Y-m-d', 'd-m-Y', 'd/m/Y', 'm/d/Y', 'd.m.Y'] as $format) {
-            $dt = \DateTime::createFromFormat($format, $value);
-            if ($dt instanceof \DateTime) {
-                return $dt->format('Y-m-d');
-            }
-        }
-
-        $dt = date_create($value);
-        return $dt ? $dt->format('Y-m-d') : null;
-    }
-
-    private function translateUploadError(int $code): string
-    {
-        return match ($code) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the maximum allowed size.',
-            UPLOAD_ERR_PARTIAL => 'The file was only partially uploaded.',
-            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
-            UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder on the server.',
-            UPLOAD_ERR_CANT_WRITE => 'Failed to write the uploaded file to disk.',
-            UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload.',
-            default => 'Unknown file upload error.',
-        };
-    }
 
     /**
      * If user type == 1000 (PPI Campus), get campus ID
@@ -1553,6 +1163,100 @@ class StudentDatabase extends ppim {
             'has_access' => $this->hasFullAccess(),
             'is_ppi_campus' => $this->isPPICampus(),
         ];
+    }
+
+    /**
+     * Insert a single student (for bulk upload API)
+     * @param array $data Student data
+     * @return array Result with success status and message
+     */
+    public function insertSingleStudent(array $data): array {
+        try {
+            // Get campus ID
+            $campusId = $this->getCampusID();
+            if (!$campusId) {
+                return ['success' => false, 'error' => 'Unable to determine campus ID'];
+            }
+
+            // Validate required field
+            $fullname = trim($data['fullname'] ?? '');
+            if (empty($fullname)) {
+                return ['success' => false, 'error' => 'Full name is required'];
+            }
+
+            // Process optional fields
+            $dob = !empty($data['dob']) ? trim($data['dob']) : null;
+            $email = !empty($data['email']) ? trim($data['email']) : null;
+            $passport = !empty($data['passport']) ? strtoupper(str_replace(' ', '', trim($data['passport']))) : null;
+            $phone = !empty($data['phone_number']) ? trim($data['phone_number']) : null;
+            $postcode = !empty($data['postcode_id']) ? trim($data['postcode_id']) : null;
+            $address = !empty($data['address']) ? trim($data['address']) : null;
+            $expectedGrad = !empty($data['expected_graduate']) ? trim($data['expected_graduate']) : null;
+            $degree = !empty($data['degree']) ? trim($data['degree']) : null;
+            $levelOfQual = !empty($data['level_of_qualification_id']) ? (int)$data['level_of_qualification_id'] : null;
+            $statusId = !empty($data['status_id']) ? (int)$data['status_id'] : 1;
+
+            // Validate phone number - should be all numbers (with optional + at start)
+            if ($phone !== null) {
+                $cleanPhone = preg_replace('/(?!^\\+)[^0-9]/', '', $phone);
+                if (!preg_match('/^\+?\d+$/', $cleanPhone)) {
+                    return ['success' => false, 'error' => 'Phone number must contain only numbers'];
+                }
+                $phone = $cleanPhone;
+            }
+
+            // Validate date formats
+            if ($dob !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
+                return ['success' => false, 'error' => 'Date of birth must be in YYYY-MM-DD format'];
+            }
+
+            if ($expectedGrad !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expectedGrad)) {
+                return ['success' => false, 'error' => 'Expected graduate date must be in YYYY-MM-DD format'];
+            }
+
+            // Prepare insert statement
+            $stmt = $this->conn->prepare(
+                "INSERT INTO student (fullname, university_id, dob, email, passport, phone_number, postcode_id, address, expected_graduate, degree, level_of_qualification_id, status_id, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
+            );
+
+            if (!$stmt) {
+                return ['success' => false, 'error' => 'Database error: ' . $this->conn->error];
+            }
+
+            $stmt->bind_param(
+                'sissssssssii',
+                $fullname,
+                $campusId,
+                $dob,
+                $email,
+                $passport,
+                $phone,
+                $postcode,
+                $address,
+                $expectedGrad,
+                $degree,
+                $levelOfQual,
+                $statusId
+            );
+
+            if ($stmt->execute()) {
+                $studentId = $this->conn->insert_id;
+                $stmt->close();
+                return [
+                    'success' => true,
+                    'message' => 'Student added successfully',
+                    'student_id' => $studentId
+                ];
+            } else {
+                $error = $stmt->error;
+                $stmt->close();
+                return ['success' => false, 'error' => 'Failed to insert student: ' . $error];
+            }
+
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => 'Server error: ' . $e->getMessage()];
+        }
     }
 }
 

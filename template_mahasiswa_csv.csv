@@ -1,0 +1,8 @@
+Full Name,Date of Birth,Email,Passport,Phone Number,Zip Code,Address,Qualification Level,Degree Programme,Expected Graduate
+Alice Smith,10/20/2004,alice.s@example.com,ABC12345,6287812345678,01000,123 Main St,Diploma,Computer Science,2025
+Bob Johnson,11/23/2002,bob.j@example.com,DEF67890,601012345678,01000,456 Oak Ave,Certificate,Data Analytics,2026
+Carol White,12/21/2002,carol.w@example.com,GHI11223,601012345678,01000,789 Pine Ln,PhD,Physics,2027
+John Doe,10/20/2004,john@example.com,ABC12345,6287812345678,01000,123 Main St,Bachelor,Computer Science,2028
+Jane Roe,11/23/2002,jane@example.com,DEF67890,601012345678,01000,456 Oak Ave,Master,Data Analytics,2025
+Peter Green,12/21/2002,peter@example.com,GHI11223,601012345678,01000,789 Pine Ln,PhD,Physics,2026
+Susan Blue,10/20/2004,susan@example.com,ABC12345,6287812345678,01000,123 Main St,Post-doctoral,Physics,2027

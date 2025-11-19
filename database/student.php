@@ -169,10 +169,11 @@ $credit_footer = '
                                     <div class="card card-body">
                                         <h3>Step</h3>
                                         <p>
-                                            1. Download the template file <a
-                                                href="../assets/file/template_mahasiswa.xlsx">(template_mahasiswa.xlsx)</a><br>
+                                            1. Open and copy the google sheets <a
+                                                href="https://docs.google.com/spreadsheets/d/1SmJdL_xxc75lAuuCfXxfvL99Hv_U5WwISeAiV2i1epo/edit?usp=sharing">(template_mahasiswa)</a><br>
                                             2. Fill in at least the "full name" column for each student<br>
-                                            3. Drag and drop the completed file into the upload section below
+                                            3. Savce as csv (.csv) file format<br>
+                                            4. Drag and drop the completed file into the upload section below
                                         </p>
                                         <h3>Note!</h3>
                                         <p>
@@ -180,26 +181,77 @@ $credit_footer = '
                                             2. All other columns are optional<br>
                                             3. Do not delete, move, or rename any columns in the template<br>
                                             4. Leave cells blank if the information is unknown<br>
-                                            5. every phone number should have their region code, including the "+" (eg.
-                                            +60)<br>
-                                            6. Passport consist of 1 character and 7 number (eg. A1234567)
+                                            5. every phone number should have their region code (eg.
+                                            60 / 62)<br>
                                         </p>
                                         <hr>
                                         <h5 class="card-title">Import New Student</h5>
-                                        <form action="" method="post" class="dropzone dz-clickable"
-                                            id="myAwesomeDropzone" data-plugin="dropzone"
-                                            data-previews-container="#file-previews"
-                                            data-upload-preview-template="#uploadPreviewTemplate"
-                                            enctype="multipart/form-data">
-                                            <input type="hidden" name="action" value="bulk_student_upload">
-                                            <input type="hidden" name="table" value="student">
-                                            <div class="dz-message needsclick">
+
+                                        <!-- CSV uploader form (no actual submission) -->
+                                        <form id="csvDropForm" class="mb-0" novalidate>
+
+                                            <style>
+                                            /* minimal local styles for the drop area */
+                                            .custom-dropzone {
+                                                cursor: pointer;
+                                                border: 2px dashed #d9dfea;
+                                                border-radius: .375rem;
+                                                background: #fbfcfe;
+                                            }
+
+                                            .custom-dropzone.drag-over {
+                                                background: #e9f7ff;
+                                                border-color: #7cc4ff;
+                                            }
+                                            </style>
+
+                                            <div id="csvDropArea" class="custom-dropzone text-center p-4" tabindex="0"
+                                                aria-label="Drop CSV here or click to upload">
                                                 <i class="ti ti-cloud-upload h1 text-muted"></i>
-                                                <h3>Drop files here or click to upload.</h3>
-                                                <span class="text-muted fs-13">(Only support
-                                                    <strong>.Xlsx</strong> format)</span>
+                                                <h3 id="csvDropTitle">Drop files here or click to upload.</h3>
+                                                <span class="text-muted fs-13">(Only support <strong>.CSV</strong>
+                                                    format)</span>
+                                                <input type="file" id="csvFileInput" name="csv_file"
+                                                    accept=".csv,text/csv" style="display:none" />
+                                            </div>
+
+                                            <div id="csvPreview" class="mt-3 d-none">
+                                                <div class="card card-body p-2 small">
+                                                    <div id="csvFileName" class="text-truncate"></div>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <!-- Check button: validates/prints CSV preview -->
+                                                    <button type="button" id="checkButton"
+                                                        class="btn btn-primary btn-sm" disabled>Check</button>
+                                                    <!-- Import button: shown after successful check -->
+                                                    <button type="button" id="importButton"
+                                                        class="btn btn-success btn-sm d-none ms-2">
+                                                        <i class="ti ti-upload"></i> Import Students
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <!-- CSV table preview -->
+                                            <div id="csvTablePreview" class="mt-3 d-none"></div>
+                                            <!-- Progress bar -->
+                                            <div id="importProgress" class="mt-3 d-none">
+                                                <div class="card card-body">
+                                                    <h5 class="mb-3">Importing Students...</h5>
+                                                    <div class="progress mb-2" style="height: 25px;">
+                                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                                            role="progressbar" style="width: 0%">0%</div>
+                                                    </div>
+                                                    <div id="progressText" class="text-muted small">Preparing...</div>
+                                                </div>
+                                            </div>
+                                            <!-- Results summary -->
+                                            <div id="importResults" class="mt-3 d-none">
+                                                <div class="card card-body">
+                                                    <h5 id="resultsTitle" class="mb-3">Import Complete</h5>
+                                                    <div id="resultsContent"></div>
+                                                </div>
                                             </div>
                                         </form>
+                                        <!-- END REPLACED -->
                                     </div>
                                 </div>
                                 <?php } ?>
@@ -610,6 +662,435 @@ $credit_footer = '
 
         <!-- Custom js -->
         <script src="../assets/js/database-nav.js"></script>
+
+        <script>
+        (function() {
+            const dropArea = document.getElementById('csvDropArea');
+            const fileInput = document.getElementById('csvFileInput');
+            const preview = document.getElementById('csvPreview');
+            const fileNameEl = document.getElementById('csvFileName');
+            const checkBtn = document.getElementById('checkButton');
+            const importBtn = document.getElementById('importButton');
+            const tablePreview = document.getElementById('csvTablePreview');
+            const progressSection = document.getElementById('importProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const resultsSection = document.getElementById('importResults');
+            const resultsTitle = document.getElementById('resultsTitle');
+            const resultsContent = document.getElementById('resultsContent');
+
+            let parsedRows = []; // Store parsed rows for import
+
+            function showToast(msg, bg) {
+                Toastify({
+                    text: msg,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: bg || "linear-gradient(to right, #333, #555)"
+                }).showToast();
+            }
+
+            function isCsvFile(file) {
+                const name = (file && file.name) ? file.name.toLowerCase() : '';
+                const type = (file && file.type) ? file.type.toLowerCase() : '';
+                return name.endsWith('.csv') || type === 'text/csv' || type === 'application/csv';
+            }
+
+            function handleFiles(files) {
+                if (!files || !files.length) return;
+                const file = files[0];
+                if (!isCsvFile(file)) {
+                    showToast('Only .csv files are allowed', 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                    fileInput.value = '';
+                    preview.classList.add('d-none');
+                    checkBtn.disabled = true;
+                    importBtn.classList.add('d-none');
+                    tablePreview.classList.add('d-none');
+                    parsedRows = [];
+                    return;
+                }
+                fileNameEl.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+                preview.classList.remove('d-none');
+                checkBtn.disabled = false;
+                importBtn.classList.add('d-none');
+                tablePreview.classList.add('d-none');
+                resultsSection.classList.add('d-none');
+                parsedRows = [];
+            }
+
+            // click to open file picker
+            dropArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // keyboard accessibility: Enter or Space opens file picker
+            dropArea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInput.click();
+                }
+            });
+
+            // file input change
+            fileInput.addEventListener('change', function(e) {
+                handleFiles(e.target.files);
+            });
+
+            // drag over / enter
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropArea.addEventListener(evt, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropArea.classList.add('drag-over');
+                });
+            });
+
+            // drag leave / end
+            ['dragleave', 'dragend', 'drop'].forEach(evt => {
+                dropArea.addEventListener(evt, function(e) {
+                    dropArea.classList.remove('drag-over');
+                });
+            });
+
+            // drop
+            dropArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const dt = e.dataTransfer;
+                if (dt && dt.files && dt.files.length) {
+                    handleFiles(dt.files);
+                    // mirror file into file input (for future form submit if implemented)
+                    try {
+                        const file = dt.files[0];
+                        // create a DataTransfer to set the file input files (modern browsers)
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(file);
+                        fileInput.files = dataTransfer.files;
+                    } catch (err) {
+                        // ignore if unsupported
+                    }
+                }
+            });
+
+            // CSV parsing utility (handles quoted fields)
+            function parseCSVLine(line) {
+                const result = [];
+                let cur = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    if (ch === '"') {
+                        if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                            cur += '"'; // escaped quote
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (ch === ',' && !inQuotes) {
+                        result.push(cur);
+                        cur = '';
+                    } else {
+                        cur += ch;
+                    }
+                }
+                result.push(cur);
+                return result;
+            }
+
+            // Expected header columns (exact order)
+            const expectedHeader = [
+                'Full Name', 'Date of Birth', 'Email', 'Passport', 'Phone Number', 'Zip Code',
+                'Address', 'Qualification Level', 'Degree Programme', 'Expected Graduate'
+            ];
+
+            // Parse date from various formats to YYYY-MM-DD
+            function parseDate(dateStr) {
+                if (!dateStr || dateStr.trim() === '') return null;
+
+                dateStr = dateStr.trim();
+
+                // Already in YYYY-MM-DD format (validate it)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    const parts = dateStr.split('-');
+                    const year = parseInt(parts[0]);
+                    const month = parseInt(parts[1]);
+                    const day = parseInt(parts[2]);
+
+                    // Validate the date
+                    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                        return dateStr;
+                    }
+                }
+
+                // Try various formats
+                const formats = [
+                    {regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: 'dmy'},  // DD/MM/YYYY
+                    {regex: /^(\d{2})-(\d{2})-(\d{4})$/, order: 'dmy'},    // DD-MM-YYYY
+                    {regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, order: 'ymd'},  // YYYY/MM/DD
+                    {regex: /^(\d{4})-(\d{2})-(\d{2})$/, order: 'ymd'},    // YYYY-MM-DD
+                ];
+
+                for (let format of formats) {
+                    const match = dateStr.match(format.regex);
+                    if (match) {
+                        let year, month, day;
+
+                        if (format.order === 'ymd') {
+                            year = parseInt(match[1]);
+                            month = parseInt(match[2]);
+                            day = parseInt(match[3]);
+                        } else { // dmy
+                            day = parseInt(match[1]);
+                            month = parseInt(match[2]);
+                            year = parseInt(match[3]);
+                        }
+
+                        // Validate the parsed values
+                        if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            // Additional validation: check if date is actually valid
+                            const testDate = new Date(year, month - 1, day);
+                            if (testDate.getFullYear() === year &&
+                                testDate.getMonth() === month - 1 &&
+                                testDate.getDate() === day) {
+                                return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            }
+                        }
+                    }
+                }
+
+                // If all else fails, try native Date parsing
+                try {
+                    const date = new Date(dateStr);
+                    if (!isNaN(date.getTime())) {
+                        const year = date.getFullYear();
+                        const month = date.getMonth() + 1;
+                        const day = date.getDate();
+
+                        if (year >= 1900 && year <= 2100) {
+                            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                return null;
+            }
+
+            // Click "Check": read file, validate header, render table of rows where Full Name exists
+            checkBtn.addEventListener('click', function() {
+                const files = fileInput.files;
+                if (!files || !files.length) {
+                    showToast('No file selected', 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                    return;
+                }
+                const file = files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result || '';
+                    // Normalize newlines and split
+                    const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+                    // Remove leading/trailing empty lines
+                    while (rawLines.length && rawLines[0].trim() === '') rawLines.shift();
+                    while (rawLines.length && rawLines[rawLines.length - 1].trim() === '') rawLines.pop();
+
+                    if (!rawLines.length) {
+                        showToast("Error: can't read the file, please use the template format!",
+                            'linear-gradient(to right, #ff5f6d, #ffc371)');
+                        return;
+                    }
+                    const headerFields = parseCSVLine(rawLines[0]).map(s => s.trim());
+                    // Validate header exact columns and order
+                    if (headerFields.length !== expectedHeader.length || !expectedHeader.every((v, i) =>
+                            headerFields[i] === v)) {
+                        showToast("Error: can't read the file, please use the template format!",
+                            'linear-gradient(to right, #ff5f6d, #ffc371)');
+                        return;
+                    }
+
+                    // Collect valid rows (first comma exists and first column non-empty)
+                    const rows = [];
+                    for (let i = 1; i < rawLines.length; i++) {
+                        const line = rawLines[i];
+                        if (!line || line.indexOf(',') === -1) continue; // require at least first comma
+                        const fields = parseCSVLine(line);
+                        const fullName = (fields[0] || '').trim();
+                        if (!fullName) continue; // skip rows without full name
+                        // ensure array length equals header length (pad with empty strings)
+                        while (fields.length < expectedHeader.length) fields.push('');
+                        rows.push(fields.slice(0, expectedHeader.length).map(f => f.trim()));
+                    }
+
+                    if (!rows.length) {
+                        tablePreview.innerHTML =
+                            '<div class="text-muted">No valid rows with Full Name found.</div>';
+                        tablePreview.classList.remove('d-none');
+                        importBtn.classList.add('d-none');
+                        parsedRows = [];
+                        return;
+                    }
+
+                    // Store parsed rows for import
+                    parsedRows = rows;
+
+                    // Build table HTML
+                    let html =
+                        '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr>';
+                    for (const h of expectedHeader) html += '<th>' + h + '</th>';
+                    html += '</tr></thead><tbody>';
+                    for (const r of rows) {
+                        html += '<tr>';
+                        for (const c of r) {
+                            html += '<td>' + (c ? escapeHtml(c) : '') + '</td>';
+                        }
+                        html += '</tr>';
+                    }
+                    html += '</tbody></table></div>';
+                    html += '<div class="small text-muted mt-1">Showing ' + rows.length +
+                        ' row(s) ready to import</div>';
+                    tablePreview.innerHTML = html;
+                    tablePreview.classList.remove('d-none');
+
+                    // Show import button
+                    importBtn.classList.remove('d-none');
+                };
+                reader.onerror = function() {
+                    showToast("Error reading file", 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                };
+                reader.readAsText(file);
+            });
+
+            // Import button click handler
+            importBtn.addEventListener('click', async function() {
+                if (!parsedRows || parsedRows.length === 0) {
+                    showToast('No data to import', 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                    return;
+                }
+
+                // Disable buttons during import
+                checkBtn.disabled = true;
+                importBtn.disabled = true;
+
+                // Show progress section
+                progressSection.classList.remove('d-none');
+                resultsSection.classList.add('d-none');
+
+                const total = parsedRows.length;
+                let success = 0;
+                let failed = [];
+
+                for (let i = 0; i < parsedRows.length; i++) {
+                    const row = parsedRows[i];
+                    const rowNum = i + 2; // +2 because row 1 is header, and array is 0-indexed
+
+                    // Update progress
+                    const percent = Math.round(((i + 1) / total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressBar.textContent = percent + '%';
+                    progressText.textContent = `Processing row ${i + 1} of ${total}...`;
+
+                    // Map CSV columns to API fields
+                    // Index: 0=Full Name, 1=DOB, 2=Email, 3=Passport, 4=Phone, 5=Zip Code,
+                    //        6=Address, 7=Qualification Level, 8=Degree Programme, 9=Expected Graduate
+                    const studentData = {
+                        fullname: row[0] || '',
+                        dob: parseDate(row[1]),
+                        email: row[2] || null,
+                        passport: row[3] || null,
+                        phone_number: row[4] || null,
+                        postcode_id: row[5] || null,
+                        address: row[6] || null,
+                        level_of_qualification_id: row[7] ? parseInt(row[7]) : null,
+                        degree: row[8] || null,
+                        expected_graduate: parseDate(row[9])
+                    };
+
+                    try {
+                        const response = await fetch('../assets/php/API/bulk-upload-student.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(studentData)
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            success++;
+                        } else {
+                            failed.push({
+                                row: rowNum,
+                                name: studentData.fullname,
+                                error: result.error || 'Unknown error'
+                            });
+                        }
+                    } catch (error) {
+                        failed.push({
+                            row: rowNum,
+                            name: studentData.fullname,
+                            error: 'Network error: ' + error.message
+                        });
+                    }
+                }
+
+                // Hide progress, show results
+                progressSection.classList.add('d-none');
+                resultsSection.classList.remove('d-none');
+
+                // Build results summary
+                let resultsHtml = `<div class="alert alert-${failed.length > 0 ? 'warning' : 'success'}" role="alert">`;
+                resultsHtml += `<strong>${success} of ${total} students imported successfully!</strong>`;
+                resultsHtml += `</div>`;
+
+                if (failed.length > 0) {
+                    resultsHtml += `<h6 class="mt-3 mb-2 text-danger">Failed Imports (${failed.length}):</h6>`;
+                    resultsHtml += `<div class="table-responsive">`;
+                    resultsHtml += `<table class="table table-sm table-bordered">`;
+                    resultsHtml += `<thead><tr><th>Row</th><th>Name</th><th>Error</th></tr></thead><tbody>`;
+                    for (const fail of failed) {
+                        resultsHtml += `<tr>`;
+                        resultsHtml += `<td>${fail.row}</td>`;
+                        resultsHtml += `<td>${escapeHtml(fail.name)}</td>`;
+                        resultsHtml += `<td class="text-danger">${escapeHtml(fail.error)}</td>`;
+                        resultsHtml += `</tr>`;
+                    }
+                    resultsHtml += `</tbody></table></div>`;
+                }
+
+                resultsContent.innerHTML = resultsHtml;
+
+                // Re-enable buttons
+                checkBtn.disabled = false;
+                importBtn.disabled = false;
+
+                // Show toast notification
+                if (failed.length === 0) {
+                    showToast(`All ${success} students imported successfully!`, 'linear-gradient(to right, #00b09b, #96c93d)');
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showToast(`Import completed with ${failed.length} errors`, 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                }
+            });
+
+            // simple HTML escape
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>"']/g, function(m) {
+                    return ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;'
+                    } [m]);
+                });
+            }
+        })();
+        </script>
 
 </body>
 
