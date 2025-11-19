@@ -36,7 +36,7 @@ if ($isExist){
     <!-- Hidden password field that will be set by JavaScript -->
     <input type="hidden" id="password" name="password">
     <input type="hidden" id="ppi-details" name="university-details" value="<?= $id; ?>">
-    <button type="submit" class="btn btn-primary">Create Account</button>
+    <button type="button" id="create-account-btn" class="btn btn-primary">Create Account</button>
 </form>
 <div id="result-container" class="mt-3" style="display:none;">
     <div class="alert alert-success">

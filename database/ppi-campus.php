@@ -19,7 +19,6 @@ $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 //check if user has a full access or just a ppi campus
 $hasFullAccess = $studentDB->hasFullAccess();
-
 // Get paginated data and total count
 $data = $studentDB->getPaginatedTableDataWithJoins('ppi_campus', $page, $limit, $search);
 $totalRecords = $studentDB->getTotalCount('ppi_campus', $search);

@@ -536,12 +536,162 @@ $totalPages = ceil($totalRecords / $limit);
             const modal = document.getElementById('ppiaccountmodal');
             const modalBody = document.getElementById('modal-body-content');
 
+            // Use event delegation on modalBody to handle button clicks
+            modalBody.addEventListener('click', function(e) {
+                // Check if the clicked element is the create account button
+                if (e.target && e.target.id === 'create-account-btn') {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    console.log('Create button clicked');
+
+                    const createBtn = e.target;
+                    const form = document.getElementById('addPPICampusAccForm');
+
+                    if (!form) {
+                        console.error('Form not found');
+                        return;
+                    }
+
+                    // Disable the button to prevent multiple submissions
+                    createBtn.disabled = true;
+                    createBtn.textContent = 'Creating...';
+
+                    // Validate required fields
+                    const usernameInput = document.getElementById('username');
+                    if (!usernameInput || !usernameInput.value.trim()) {
+                        alert('Please enter a username');
+                        createBtn.disabled = false;
+                        createBtn.textContent = 'Create Account';
+                        return;
+                    }
+
+                    // Generate secure password
+                    const generatePassword = () => {
+                        const chars =
+                            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                        const specialChars = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+                        let password = '';
+
+                        for (let i = 0; i < 10; i++) {
+                            password += chars.charAt(Math.floor(Math.random() *
+                                chars.length));
+                        }
+
+                        for (let i = 0; i < 2; i++) {
+                            const specialChar = specialChars.charAt(Math.floor(
+                                Math.random() * specialChars.length));
+                            const position = Math.floor(Math.random() * (
+                                password.length + 1));
+                            password = password.slice(0, position) +
+                                specialChar + password.slice(position);
+                        }
+
+                        return password;
+                    };
+
+                    const password = generatePassword();
+                    const passwordField = document.getElementById('password');
+                    if (!passwordField) {
+                        console.error('Password field not found');
+                        createBtn.disabled = false;
+                        createBtn.textContent = 'Create Account';
+                        return;
+                    }
+                    passwordField.value = password;
+
+                    const formData = new FormData(form);
+                    const username = formData.get('username');
+                    const userTypeSelect = document.getElementById('user-type');
+                    if (!userTypeSelect) {
+                        console.error('User type select not found');
+                        createBtn.disabled = false;
+                        createBtn.textContent = 'Create Account';
+                        return;
+                    }
+                    const usertypeText = userTypeSelect.selectedOptions[0].text;
+
+                    fetch(form.action, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => {
+                            // Log response for debugging
+                            console.log('Response status:', response.status);
+                            console.log('Response headers:', response.headers.get('content-type'));
+
+                            // Get the text first to see what we're actually getting
+                            return response.text().then(text => {
+                                console.log('Raw response:', text);
+                                try {
+                                    return JSON.parse(text);
+                                } catch (e) {
+                                    console.error('JSON parse error:', e);
+                                    console.error('Response text:', text);
+                                    throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+                                }
+                            });
+                        })
+                        .then(data => {
+                            console.log('Parsed data:', data);
+                            console.log('data.success:', data.success);
+
+                            if (data.success) {
+                                console.log('Success! Now looking for result elements...');
+
+                                // Check if elements exist before trying to set them
+                                const resultUsername = document.getElementById('result-username');
+                                const resultPassword = document.getElementById('result-password');
+                                const resultUsertype = document.getElementById('result-usertype');
+                                const resultContainer = document.getElementById('result-container');
+
+                                console.log('Found elements:', {
+                                    resultUsername: !!resultUsername,
+                                    resultPassword: !!resultPassword,
+                                    resultUsertype: !!resultUsertype,
+                                    resultContainer: !!resultContainer
+                                });
+
+                                if (!resultUsername || !resultPassword || !resultUsertype || !resultContainer) {
+                                    console.error('Result elements not found in DOM');
+                                    alert('Success! Username: ' + username + '\nPassword: ' + password + '\n\nPlease copy this password now!');
+                                    return;
+                                }
+
+                                console.log('Setting result values...');
+                                resultUsername.textContent = username;
+                                resultPassword.textContent = password;
+                                resultUsertype.textContent = usertypeText;
+                                resultContainer.style.display = 'block';
+                                form.style.display = 'none';
+                                console.log('Success message should now be visible');
+                            } else {
+                                console.error('Request failed:', data.message);
+                                alert('Error: ' + (data.message ||
+                                    'Failed to create user'));
+                                createBtn.disabled = false;
+                                createBtn.textContent = 'Create Account';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred while creating the user: ' + error.message);
+                            // Re-enable button on error
+                            createBtn.disabled = false;
+                            createBtn.textContent = 'Create Account';
+                        });
+                }
+            });
+
             modal.addEventListener('show.bs.modal', function(event) {
+                console.log('Modal show.bs.modal event triggered');
+
                 // Button that triggered the modal
                 const button = event.relatedTarget;
 
                 // Get the data-id attribute
                 const dataId = button.getAttribute('data-id');
+                console.log('Loading modal for university ID:', dataId);
 
                 // Show loading spinner
                 modalBody.innerHTML = `
@@ -565,71 +715,7 @@ $totalPages = ceil($totalRecords / $limit);
                     })
                     .then(data => {
                         modalBody.innerHTML = data;
-
-                        // ✅ Attach submit handler after content is loaded
-                        const form = document.getElementById('addPPICampusAccForm');
-                        if (!form) return;
-
-                        form.addEventListener('submit', function(e) {
-                            e.preventDefault();
-
-                            // Generate secure password
-                            const generatePassword = () => {
-                                const chars =
-                                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                                const specialChars = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-                                let password = '';
-
-                                for (let i = 0; i < 10; i++) {
-                                    password += chars.charAt(Math.floor(Math.random() *
-                                        chars.length));
-                                }
-
-                                for (let i = 0; i < 2; i++) {
-                                    const specialChar = specialChars.charAt(Math.floor(
-                                        Math.random() * specialChars.length));
-                                    const position = Math.floor(Math.random() * (
-                                        password.length + 1));
-                                    password = password.slice(0, position) +
-                                        specialChar + password.slice(position);
-                                }
-
-                                return password;
-                            };
-
-                            const password = generatePassword();
-                            document.getElementById('password').value = password;
-
-                            const formData = new FormData(form);
-                            const username = formData.get('username');
-                            const usertypeText = document.getElementById('user-type')
-                                .selectedOptions[0].text;
-
-                            fetch(form.action, {
-                                    method: 'POST',
-                                    body: formData
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        document.getElementById('result-username')
-                                            .textContent = username;
-                                        document.getElementById('result-password')
-                                            .textContent = password;
-                                        document.getElementById('result-usertype')
-                                            .textContent = usertypeText;
-                                        document.getElementById('result-container')
-                                            .style.display = 'block';
-                                    } else {
-                                        alert('Error: ' + (data.message ||
-                                            'Failed to create user'));
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    alert('An error occurred while creating the user');
-                                });
-                        });
+                        console.log('Modal content loaded');
                     })
                     .catch(error => {
                         modalBody.innerHTML = `
