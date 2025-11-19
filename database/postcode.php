@@ -194,7 +194,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                         class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editPostcodeModal<?= $row['zip_code'] ?>">
-                                                        <i class="ti ti-edit"></i>
+                                                        <i class="ti ti-edit"></i> Edit
                                                     </button>
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="delete">
@@ -204,7 +204,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                         <button type="submit"
                                                             class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
-                                                            <i class="ti ti-trash"></i>
+                                                            <i class="ti ti-trash"></i> Delete
                                                         </button>
                                                     </form>
 

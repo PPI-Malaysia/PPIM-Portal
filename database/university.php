@@ -135,7 +135,8 @@ $totalPages = ceil($totalRecords / $limit);
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Postcode*</label>
-                                                <select name="postcode_id" class="form-control" id="postcode-select-add">
+                                                <select name="postcode_id" class="form-control"
+                                                    id="postcode-select-add">
                                                     <option value="">Select Postcode</option>
                                                 </select>
                                             </div>
@@ -230,15 +231,17 @@ $totalPages = ceil($totalRecords / $limit);
                                                 <td>
                                                     <button type="button"
                                                         class="btn btn-soft-secondary rounded-pill btn-sm me-1"
-                                                        data-bs-toggle="modal" data-bs-target="#ppiaccountmodal"
+                                                        style="margin-bottom: 10px; width: 100%;" data-bs-toggle="modal"
+                                                        data-bs-target="#ppiaccountmodal"
                                                         data-id="<?= $row['university_id']; ?>">
-                                                        <i class="ti ti-user"></i>
+                                                        <i class="ti ti-user"></i> Account
                                                     </button>
+                                                    <br>
                                                     <button type="button"
                                                         class="btn btn-soft-primary rounded-pill btn-sm me-1"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editUniversityModal<?= $row['university_id'] ?>">
-                                                        <i class="ti ti-edit"></i>
+                                                        <i class="ti ti-edit"></i> Edit
                                                     </button>
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="delete">
@@ -248,7 +251,7 @@ $totalPages = ceil($totalRecords / $limit);
                                                         <button type="submit"
                                                             class="btn btn-soft-danger rounded-pill btn-sm"
                                                             onclick="return confirm('Are you sure?')">
-                                                            <i class="ti ti-trash"></i>
+                                                            <i class="ti ti-trash"></i> Delete
                                                         </button>
                                                     </form>
 
@@ -320,7 +323,8 @@ $totalPages = ceil($totalRecords / $limit);
                                                                                 class="form-select postcode-select-edit"
                                                                                 id="postcode-select-edit-<?= $row['university_id'] ?>"
                                                                                 data-selected="<?= htmlspecialchars($row['postcode_id'] ?? '') ?>">
-                                                                                <option value="">Select Postcode</option>
+                                                                                <option value="">Select Postcode
+                                                                                </option>
                                                                             </select>
                                                                         </div>
                                                                         <div class="mb-3">
@@ -612,7 +616,8 @@ $totalPages = ceil($totalRecords / $limit);
                                 } catch (e) {
                                     console.error('JSON parse error:', e);
                                     console.error('Response text:', text);
-                                    throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+                                    throw new Error('Invalid JSON response: ' + text
+                                        .substring(0, 100));
                                 }
                             });
                         })
@@ -636,9 +641,11 @@ $totalPages = ceil($totalRecords / $limit);
                                     resultContainer: !!resultContainer
                                 });
 
-                                if (!resultUsername || !resultPassword || !resultUsertype || !resultContainer) {
+                                if (!resultUsername || !resultPassword || !resultUsertype || !
+                                    resultContainer) {
                                     console.error('Result elements not found in DOM');
-                                    alert('Success! Username: ' + username + '\nPassword: ' + password + '\n\nPlease copy this password now!');
+                                    alert('Success! Username: ' + username + '\nPassword: ' +
+                                        password + '\n\nPlease copy this password now!');
                                     return;
                                 }
 
