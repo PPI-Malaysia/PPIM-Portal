@@ -73,7 +73,7 @@
                             </a>
                         </li>
                         <li class="side-nav-item">
-                            <a href="../team-management.php" class="side-nav-link">
+                            <a href="../team-management-v2.php" class="side-nav-link">
                                 <span class="menu-text">Team Members</span>
                             </a>
                         </li>

@@ -36,23 +36,7 @@ yarn-error.log*
 .sass-cache/
 
 # Documentation and guide files (generated/temporary)
-*_GUIDE.md
-*_SETUP.md
-*_EXPLANATION.md
-*_TROUBLESHOOTING.md
-*_FIX.md
-*_STATUS.md
-*_PROMPT.md
-*_INTEGRATION.md
-QUICK_FIX.md
-IMPLEMENTATION_STATUS.md
-DOWNLOAD_TROUBLESHOOTING.md
-FILE_UPLOAD_EXPLANATION.md
-FILE_STORAGE_GUIDE.md
-ROOT_PATH_FIX.md
-EXTERNAL_BACKEND_INTEGRATION.md
-CHATBOT_PROMPT.md
-CONTENT_MANAGEMENT_SETUP.md
+docs/
 
 # Test and diagnostic files
 test-*.php
