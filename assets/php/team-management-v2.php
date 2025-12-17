@@ -383,7 +383,7 @@ class TeamManagementV2 extends ContentManagement {
         $isActive = isset($data['isActive']) ? ($data['isActive'] ? 1 : 0) : 1;
         
         $stmt->bind_param(
-            "ssssssiis",
+            "ssssssiii",
             $data['name'],
             $slug,
             $data['shortName'],
