@@ -14,12 +14,6 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Check if user has permission for PPI account creation
-if (!isset($_SESSION['user_permissions']) || !in_array('student_db_add', $_SESSION['user_permissions'])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access - student_db_add permission required']);
-    exit();
-}
-
 try {
     $main = new UserPPI();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
