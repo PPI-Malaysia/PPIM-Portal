@@ -3,7 +3,7 @@ $id = $_GET['id'];
 require_once("../user.php");
 $user = new User();
 if ($user->hasPermission("student_db_add") == false){
-    header('Location: /access-denied.php');
+    echo getUserPermissions();
     exit();
 }
 $isExist = $user->getUniUserByUniId($id);
