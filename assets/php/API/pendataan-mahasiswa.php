@@ -400,7 +400,7 @@ try {
             'passport'                   => fn($v) => norm_passport($v),
             'phone_number'               => fn($v) => norm_phone($v),
             'status_id'                  => fn($v) => ($v === '' || $v === null) ? null : (int)$v,
-            'postcode_id'                => fn($v) use ($conn) => norm_postcode($v, $conn),
+            'postcode_id'                => fn($v) => norm_postcode($v, $conn),
             'address'                    => fn($v) => trim((string)$v),
             'expected_graduate'          => fn($v) => norm_dob($v),
             'degree'                     => fn($v) => ($v === '' ? null : trim((string)$v)),
