@@ -173,7 +173,8 @@ $credit_footer = '
                                         <h3>Step</h3>
                                         <p>
                                             1. Open and copy the google sheets <a
-                                                href="https://docs.google.com/spreadsheets/d/1SmJdL_xxc75lAuuCfXxfvL99Hv_U5WwISeAiV2i1epo/edit?usp=sharing">(template_mahasiswa)</a><br>
+                                                href="https://docs.google.com/spreadsheets/d/1SmJdL_xxc75lAuuCfXxfvL99Hv_U5WwISeAiV2i1epo/edit?usp=sharing"
+                                                target="_blank">(template_mahasiswa)</a><br>
                                             2. Fill in at least the "full name" column for each student<br>
                                             3. Savce as csv (.csv) file format<br>
                                             4. Drag and drop the completed file into the upload section below
@@ -240,7 +241,8 @@ $credit_footer = '
                                                 <div class="card card-body">
                                                     <h5 class="mb-3">Importing Students...</h5>
                                                     <div class="progress mb-2" style="height: 25px;">
-                                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                                        <div id="progressBar"
+                                                            class="progress-bar progress-bar-striped progress-bar-animated"
                                                             role="progressbar" style="width: 0%">0%</div>
                                                     </div>
                                                     <div id="progressText" class="text-muted small">Preparing...</div>
@@ -816,11 +818,22 @@ $credit_footer = '
                 }
 
                 // Try various formats
-                const formats = [
-                    {regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: 'dmy'},  // DD/MM/YYYY
-                    {regex: /^(\d{2})-(\d{2})-(\d{4})$/, order: 'dmy'},    // DD-MM-YYYY
-                    {regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, order: 'ymd'},  // YYYY/MM/DD
-                    {regex: /^(\d{4})-(\d{2})-(\d{2})$/, order: 'ymd'},    // YYYY-MM-DD
+                const formats = [{
+                        regex: /^(\d{2})\/(\d{2})\/(\d{4})$/,
+                        order: 'dmy'
+                    }, // DD/MM/YYYY
+                    {
+                        regex: /^(\d{2})-(\d{2})-(\d{4})$/,
+                        order: 'dmy'
+                    }, // DD-MM-YYYY
+                    {
+                        regex: /^(\d{4})\/(\d{2})\/(\d{2})$/,
+                        order: 'ymd'
+                    }, // YYYY/MM/DD
+                    {
+                        regex: /^(\d{4})-(\d{2})-(\d{2})$/,
+                        order: 'ymd'
+                    }, // YYYY-MM-DD
                 ];
 
                 for (let format of formats) {
@@ -885,7 +898,8 @@ $credit_footer = '
                     const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
                     // Remove leading/trailing empty lines
                     while (rawLines.length && rawLines[0].trim() === '') rawLines.shift();
-                    while (rawLines.length && rawLines[rawLines.length - 1].trim() === '') rawLines.pop();
+                    while (rawLines.length && rawLines[rawLines.length - 1].trim() === '') rawLines
+                    .pop();
 
                     if (!rawLines.length) {
                         showToast("Error: can't read the file, please use the template format!",
@@ -1032,15 +1046,19 @@ $credit_footer = '
                 resultsSection.classList.remove('d-none');
 
                 // Build results summary
-                let resultsHtml = `<div class="alert alert-${failed.length > 0 ? 'warning' : 'success'}" role="alert">`;
-                resultsHtml += `<strong>${success} of ${total} students imported successfully!</strong>`;
+                let resultsHtml =
+                    `<div class="alert alert-${failed.length > 0 ? 'warning' : 'success'}" role="alert">`;
+                resultsHtml +=
+                `<strong>${success} of ${total} students imported successfully!</strong>`;
                 resultsHtml += `</div>`;
 
                 if (failed.length > 0) {
-                    resultsHtml += `<h6 class="mt-3 mb-2 text-danger">Failed Imports (${failed.length}):</h6>`;
+                    resultsHtml +=
+                        `<h6 class="mt-3 mb-2 text-danger">Failed Imports (${failed.length}):</h6>`;
                     resultsHtml += `<div class="table-responsive">`;
                     resultsHtml += `<table class="table table-sm table-bordered">`;
-                    resultsHtml += `<thead><tr><th>Row</th><th>Name</th><th>Error</th></tr></thead><tbody>`;
+                    resultsHtml +=
+                        `<thead><tr><th>Row</th><th>Name</th><th>Error</th></tr></thead><tbody>`;
                     for (const fail of failed) {
                         resultsHtml += `<tr>`;
                         resultsHtml += `<td>${fail.row}</td>`;
@@ -1059,13 +1077,15 @@ $credit_footer = '
 
                 // Show toast notification
                 if (failed.length === 0) {
-                    showToast(`All ${success} students imported successfully!`, 'linear-gradient(to right, #00b09b, #96c93d)');
+                    showToast(`All ${success} students imported successfully!`,
+                        'linear-gradient(to right, #00b09b, #96c93d)');
                     // Reload page after 2 seconds
                     setTimeout(() => {
                         location.reload();
                     }, 2000);
                 } else {
-                    showToast(`Import completed with ${failed.length} errors`, 'linear-gradient(to right, #ff5f6d, #ffc371)');
+                    showToast(`Import completed with ${failed.length} errors`,
+                        'linear-gradient(to right, #ff5f6d, #ffc371)');
                 }
             });
 
