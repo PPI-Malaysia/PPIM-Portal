@@ -1,9 +1,8 @@
 <?php
-//note: this page is only accessible to users with user_type = 999 (super admin)
 // Set the content type to JSON - MUST be before any output
 header('Content-Type: application/json');
 
-require_once("../user.php");
+require_once("../user-ppi.php");
 // Start session if not already started
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -15,58 +14,51 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-if ($_SESSION['user_type'] != 999) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access - Super Admin only']);
+// Check if user has permission for PPI account creation
+if (!isset($_SESSION['user_permissions']) || !in_array('student_db_add', $_SESSION['user_permissions'])) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access - student_db_add permission required']);
     exit();
 }
 
 try {
-    $main = new User();
-    
+    $main = new UserPPI();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Invalid request method');
     }
-    
+
     // Get form data
     $name = trim($_POST['username']);
     $password = $_POST['password'];
-    $type = intval($_POST['usertype']);
-    
+    $type = 1000;
+    $university_details = $_POST['university-details'];
+
     // Validate input
     if (empty($name)) {
         throw new Exception('Username is required');
     }
-    
+
     if (empty($password)) {
         throw new Exception('Password is required');
     }
-    
+
     if (empty($type)) {
         throw new Exception('User type is required');
     }
-    
-    // Validate user type exists and is active
-    $userTypes = $main->getUserTypes();
-    $validTypes = array_column($userTypes, 'id');
-    
-    if (!in_array($type, $validTypes)) {
-        throw new Exception('Invalid user type selected');
-    }
-    
-    // Create user using the User class method
-    $result = $main->addUser($name, $password, $type);
-    
+
+    // Create user using the UserPPI class method
+    $result = $main->addUser($name, $password);
+
     if ($result) {
-        //connect the $name with $university-details on ppi_campus_user
-        $connectUser = $main->connectUniUser($name, $_POST['university-details']);
+        //connect the $name with $university-details on university_user table
+        $connectUser = $main->connectUniUser($name, $university_details);
         echo json_encode([
             'success' => true,
-            'message' => 'User created successfully'
+            'message' => 'PPI campus user created successfully'
         ]);
     } else {
         throw new Exception('Failed to create user. Username may already exist.');
     }
-    
+
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
