@@ -817,6 +817,15 @@ $credit_footer = '
                     }
                 }
 
+                // Check if it's a year-only format (4 digits)
+                if (/^\d{4}$/.test(dateStr)) {
+                    const year = parseInt(dateStr);
+                    if (year >= 1900 && year <= 2100) {
+                        // Convert year-only to December 31 of that year
+                        return `${year}-12-27`;
+                    }
+                }
+
                 // Try various formats
                 const formats = [{
                         regex: /^(\d{2})\/(\d{2})\/(\d{4})$/,
@@ -899,7 +908,7 @@ $credit_footer = '
                     // Remove leading/trailing empty lines
                     while (rawLines.length && rawLines[0].trim() === '') rawLines.shift();
                     while (rawLines.length && rawLines[rawLines.length - 1].trim() === '') rawLines
-                    .pop();
+                        .pop();
 
                     if (!rawLines.length) {
                         showToast("Error: can't read the file, please use the template format!",
@@ -1049,7 +1058,7 @@ $credit_footer = '
                 let resultsHtml =
                     `<div class="alert alert-${failed.length > 0 ? 'warning' : 'success'}" role="alert">`;
                 resultsHtml +=
-                `<strong>${success} of ${total} students imported successfully!</strong>`;
+                    `<strong>${success} of ${total} students imported successfully!</strong>`;
                 resultsHtml += `</div>`;
 
                 if (failed.length > 0) {
