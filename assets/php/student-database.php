@@ -1309,6 +1309,73 @@ class StudentDatabase extends ppim {
     }
 
     /**
+     * Get all PPIM members for export (no pagination)
+     * Supports search and sorting like the main view
+     */
+    public function getAllPPIMForExport($search = '', $sort = null, $dir = 'asc') {
+        $params = [];
+        $types = '';
+        $whereClause = '';
+        $searchParam = "%$search%";
+
+        // Base query with all necessary joins
+        $baseQuery = "
+            SELECT
+                p.ppim_id,
+                s.fullname,
+                p.start_year,
+                p.end_year,
+                p.department,
+                p.position,
+                p.description,
+                p.is_active
+            FROM ppim p
+            LEFT JOIN student s ON p.student_id = s.student_id";
+
+        // Add search filter if provided
+        if (!empty($search)) {
+            $whereClause = " WHERE (s.fullname LIKE ? OR p.department LIKE ? OR p.position LIKE ?)";
+            $params = [$searchParam, $searchParam, $searchParam];
+            $types = "sss";
+        }
+
+        // Add sorting
+        $allowedSorts = [
+            'id' => 'p.ppim_id',
+            'fullname' => 's.fullname',
+            'start_year' => 'p.start_year',
+            'end_year' => 'p.end_year',
+            'department' => 'p.department',
+            'position' => 'p.position',
+        ];
+        $orderDir = strtoupper($dir) === 'DESC' ? 'DESC' : 'ASC';
+        $orderClause = isset($allowedSorts[$sort])
+            ? " ORDER BY {$allowedSorts[$sort]} $orderDir"
+            : " ORDER BY p.start_year DESC, s.fullname ASC";
+
+        // Execute query
+        $query = $baseQuery . $whereClause . $orderClause;
+        $stmt = $this->conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->conn->error);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result) {
+            throw new Exception("Query failed: " . $this->conn->error);
+        }
+
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
      * Get user permissions info for frontend
      */
     public function getUserInfo() {

@@ -111,10 +111,15 @@ function status($int){
                             <div
                                 class="card-header border-bottom border-dashed d-flex align-items-center justify-content-between">
                                 <h4 class="header-title">PPIM Members</h4>
-                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
-                                    data-bs-target="#addPpim">
-                                    <i class="ti ti-plus fs-16"></i> Add New
-                                </button>
+                                <div>
+                                    <button type="button" class="btn btn-success btn-sm mx-2" id="exportBtn">
+                                        <i class="ti ti-download fs-16"></i> Export
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse"
+                                        data-bs-target="#addPpim">
+                                        <i class="ti ti-plus fs-16"></i> Add New
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <!-- Add Form -->
@@ -524,6 +529,31 @@ function status($int){
 
         <!-- Custom js -->
         <script src="../assets/js/database-nav.js"></script>
+
+        <!-- Export functionality -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    // Get current search and sort parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const search = urlParams.get('search') || '';
+                    const sort = urlParams.get('sort') || '';
+                    const dir = urlParams.get('dir') || '';
+
+                    // Build export URL with current filters
+                    let exportUrl = '../assets/php/API/export-ppim.php?export=csv';
+                    if (search) exportUrl += '&search=' + encodeURIComponent(search);
+                    if (sort) exportUrl += '&sort=' + encodeURIComponent(sort);
+                    if (dir) exportUrl += '&dir=' + encodeURIComponent(dir);
+
+                    // Trigger download
+                    window.location.href = exportUrl;
+                });
+            }
+        });
+        </script>
 
 </body>
 
